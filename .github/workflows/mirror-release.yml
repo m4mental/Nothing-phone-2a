@@ -23,7 +23,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y jq curl p7zip-full unzip python3
 
-      - name: Download Stock boot and init_boot from Official Archive
+      - name: Download Stock boot and init_boot from image-boot.7z
         id: process_release
         run: |
           REPO="spike0en/nothing_archive"
@@ -46,7 +46,7 @@ jobs:
           
           # Description body save karna aur custom message add karna
           echo "$RELEASE_JSON" | jq -r '.body' > release_body.txt
-          echo -e "\n\n---\n### 📂 Patched Partition Images (Clean Names):\nAapke Nothing Phone (2a) (Pacman) ke liye niche di gayi images is release mein generate ki gayi hain:\n\n- **\`APatch-boot.img\`** -> APatch manager se root karne ke liye is boot image ko flash karein.\n- **\`FolkPatch-boot.img\`** -> FolkPatch manager se root karne ke liye is boot image ko flash karein (FolkPatch ki SuperKey \`su\` hai).\n- **\`KernelSU-init_boot.img\`** -> Official KernelSU ke liye is init_boot image ko flash karein.\n- **\`KernelSU-Next-init_boot.img\`** -> KernelSU-Next (Normal aur Spoof dono APKs ke liye) is init_boot image ko flash karein.\n- **\`SukiSU-Ultra-init_boot.img\`** -> SukiSU-Ultra root manager ke liye is init_boot image ko flash karein.\n- **\`stock-boot.img\` / \`stock-init_boot.img\`** -> Original unmodified files (Backup ke liye)." >> release_body.txt
+          echo -e "\n\n---\n### 📂 Patched Partition Images (Clean Names):\nAapke Nothing Phone (2a) (Pacman) ke liye niche di gayi images is release mein generate ki gayi hain:\n\n- **\`APatch-boot.img\`** -> APatch manager se root karne ke liye is boot image ko flash karein.\n- **\`FolkPatch-boot.img\`** -> FolkPatch manager se root karne ke liye is boot image ko flash karein (FolkPatch ki SuperKey \`su\` hai).\n- **\`KernelSU-init_boot.img\`** -> Official KernelSU ke liye is init_boot image ko flash karein.\n- **\`KernelSU-Next-Normal-init_boot.img\`** -> KernelSU-Next (Normal APK) ke liye is init_boot image ko flash karein.\n- **\`KernelSU-Next-Spoof-init_boot.img\`** -> KernelSU-Next (Spoofed APK) ke liye is init_boot image ko flash karein.\n- **\`SukiSU-Ultra-init_boot.img\`** -> SukiSU-Ultra root manager ke liye is init_boot image ko flash karein.\n- **\`stock-boot.img\` / \`stock-init_boot.img\`** -> Original unmodified files (Backup ke liye)." >> release_body.txt
           
           # image-boot.7z file ka download link nikalna
           IMAGE_BOOT_URL=$(echo "$RELEASE_JSON" | jq -r '.assets[] | select(.name | contains("image-boot.7z")) | .browser_download_url')
@@ -114,6 +114,27 @@ jobs:
           KSUN_APK_SPOOF=$(echo "$KSUN_RELEASE" | jq -r '.assets[] | select(.name | contains("spoofed") and contains(".apk")) | .browser_download_url' | head -n 1)
           if [ -z "$KSUN_APK_NORMAL" ] || [ "$KSUN_APK_NORMAL" == "null" ]; then
             KSUN_APK_NORMAL=$(echo "$KSUN_RELEASE" | jq -r '.assets[] | select(.name | endswith(".apk") and (contains("spoofed") | not)) | .browser_download_url' | head -n 1)
+          fi
+          
+          # Spoofed GKI Module ko extract karna (Spoofed APK ke assets se extraction)
+          if [ ! -z "$KSUN_APK_SPOOF" ] && [ "$KSUN_APK_SPOOF" != "null" ]; then
+            echo "Downloading spoofed APK to extract spoofed .ko module..."
+            curl -L -o ksun-spoofed.apk "$KSUN_APK_SPOOF"
+            unzip -o ksun-spoofed.apk -d ksun_spoofed_unzipped
+            
+            # Unzip kiye gaye spoofed apk se 5.15 module dhoondhna
+            SPOOF_KO_PATH=$(find ksun_spoofed_unzipped/ -type f -name "*5.15_kernelsu.ko" -o -name "*5.15*.ko" | head -n 1)
+            if [ ! -z "$SPOOF_KO_PATH" ]; then
+              cp "$SPOOF_KO_PATH" kernelsu-next-spoof.ko
+              echo "Successfully extracted spoofed .ko module: $SPOOF_KO_PATH"
+            else
+              echo "Warning: Spoofed ko not found in APK, using fallback."
+              cp kernelsu-next.ko kernelsu-next-spoof.ko
+            fi
+            rm -rf ksun_spoofed_unzipped ksun-spoofed.apk
+          else
+            echo "Warning: Spoofed APK URL empty, fallback used."
+            cp kernelsu-next.ko kernelsu-next-spoof.ko
           fi
           
           # 3. Latest Stable SukiSU-Ultra Module & APK URL
@@ -204,10 +225,13 @@ jobs:
           # 3. KernelSU (Official) init_boot patching
           patch_init_boot_lkm kernelsu-official.ko "KernelSU-init_boot.img"
           
-          # 4. KernelSU-Next (Works on both Normal and Spoof APK Managers)
-          patch_init_boot_lkm kernelsu-next.ko "KernelSU-Next-init_boot.img"
+          # 4. KernelSU-Next (Normal APK Manager ke liye)
+          patch_init_boot_lkm kernelsu-next.ko "KernelSU-Next-Normal-init_boot.img"
           
-          # 5. SukiSU-Ultra init_boot patching
+          # 5. KernelSU-Next (Spoofed APK Manager ke liye)
+          patch_init_boot_lkm kernelsu-next-spoof.ko "KernelSU-Next-Spoof-init_boot.img"
+          
+          # 6. SukiSU-Ultra init_boot patching
           patch_init_boot_lkm sukisu-ultra.ko "SukiSU-Ultra-init_boot.img"
 
       - name: Create Release and Upload Patched Partition Images

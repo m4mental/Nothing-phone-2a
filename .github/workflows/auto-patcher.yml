@@ -3,7 +3,12 @@ name: Automatic Root Patcher (Autopilot)
 on:
   schedule:
     - cron: '0 */12 * * *' # Har 12 ghante mein automatic background mein check karega
-  workflow_dispatch: # Manual run karne ke liye option rahega
+  workflow_dispatch: # Manual ek click par run karne ke liye bhi option rahega
+    inputs:
+      superkey:
+        description: 'APatch ke liye SuperKey dalein'
+        required: true
+        default: 'root@123' # Default password is now root@123
 
 permissions:
   contents: write # Repository aur README mein automatic write karne ke liye
@@ -14,6 +19,8 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Full git history fetch karna push safety ke liye
 
       - name: Install Tools
         run: |
@@ -56,6 +63,7 @@ jobs:
           BUILD_APA=false
           BUILD_FOLK=false
           
+          # Check automatic update logic
           if [ "$NEW_NOTHING" != "$OLD_NOTHING" ]; then
             echo "Nothing OS update detected! Full rebuild triggered."
             BUILD_STOCK=true
@@ -70,6 +78,17 @@ jobs:
             if [ "$NEW_SUKI" != "$OLD_SUKI" ]; then BUILD_SUKI=true; fi
             if [ "$NEW_APA" != "$OLD_APA" ]; then BUILD_APA=true; fi
             if [ "$NEW_FOLK" != "$OLD_FOLK" ]; then BUILD_FOLK=true; fi
+          fi
+          
+          # FORCE TRIGGER IF MANUALLY RUN (Crucial for first run/updates)
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "Manual run detected! Force-enabling all builds and README updates."
+            BUILD_STOCK=true
+            BUILD_KSU=true
+            BUILD_KSUN=true
+            BUILD_SUKI=true
+            BUILD_APA=true
+            BUILD_FOLK=true
           fi
           
           if [ "$BUILD_STOCK" = "true" ] || [ "$BUILD_KSU" = "true" ] || [ "$BUILD_KSUN" = "true" ] || [ "$BUILD_SUKI" = "true" ] || [ "$BUILD_APA" = "true" ] || [ "$BUILD_FOLK" = "true" ]; then
@@ -196,7 +215,7 @@ jobs:
           
           # Create description files
           cp base_body.txt desc_apatch.txt
-          echo -e "\n\n---\n### 🛡️ APatch Patched Boot Image:\n- **APatch SuperKey:** \`${{ github.event.inputs.superkey }}\`\n- **File to Flash:** \`APatch-boot.img\`\n- **Backup File:** \`stock-boot.img\`\n\n### 📥 Direct Download Link:\n- [Download APatch APK]($APA_APK_URL)" >> desc_apatch.txt
+          echo -e "\n\n---\n### 🛡️ APatch Patched Boot Image:\n- **APatch SuperKey:** \`${{ github.event.inputs.superkey }}\` (Is SuperKey/password ka use APatch app mein root access grant karne ke liye karein).\n- **File to Flash:** \`APatch-boot.img\`\n- **Backup File:** \`stock-boot.img\`\n\n### 📥 Direct Download Link:\n- [Download APatch APK]($APA_APK_URL)" >> desc_apatch.txt
           
           cp base_body.txt desc_folkpatch.txt
           echo -e "\n\n---\n### 🛡️ FolkPatch Patched Boot Image:\n- **FolkPatch SuperKey:** Default (\`su\`)\n- **File to Flash:** \`FolkPatch-boot.img\`\n- **Backup File:** \`stock-boot.img\`\n\n### 📥 Direct Download Link:\n- [Download FolkPatch APK]($FOLK_APK_URL)" >> desc_folkpatch.txt
@@ -365,4 +384,52 @@ jobs:
           cat << EOF > README.md
           # Nothing Phone (2a) - Autopilot Root Patcher Hub 🛡️
 
-          Welcome to your personal automatic rooting hub! This repository automati
+          Welcome to your personal automatic rooting hub! This repository automatically tracks, downloads, patches, and publishes stock and rooted partition images for **Nothing Phone (2a) (Pacman)** on every new update.
+
+          ---
+
+          ## 📥 Quick Download Navigation (Latest Releases)
+          Apne phone ke liye sahi download select karne ke liye niche diye gaye buttons/links par click karein:
+
+          ### 📱 Stock Update (No Root)
+          Agar aapko bina root ke, sirf original stock update files (firmware, logical, boot, etc.) download karni hain, toh yahan click karein:
+          *   👉 **[Go to Latest Stock Update Release]($URL_STOCK)**
+
+          ---
+
+          ### 🔑 Patched Boot Images (APatch & FolkPatch)
+          Apatch aur FolkPatch ke liye patched boot images ko download karne ke liye niche click karein:
+          *   👉 **[Download Latest APatch Patched Boot]($URL_APA)**
+          *   👉 **[Download Latest FolkPatch Patched Boot]($URL_FOLK)**
+
+          ---
+
+          ### 🧬 Patched Init_Boot Images (KernelSU, KernelSU-Next, SukiSU-Ultra)
+          KernelSU aur uske compatible modules se device root karne ke liye patched init_boot images yahan se download karein:
+          *   👉 **[Download Latest KernelSU Patched Init_Boot]($URL_KSU)**
+          *   👉 **[Download Latest KernelSU-Next Patched Init_Boot]($URL_KSUN)**
+          *   👉 **[Download Latest SukiSU-Ultra Patched Init_Boot]($URL_SUKI)**
+
+          ---
+          *Auto-updated by GitHub Actions. Last check: $CURR_DATE*
+          EOF
+
+      - name: Update and Commit Tracked Versions & README to Repository
+        if: env.ANY_BUILD == 'true'
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # checkout correct branch explicitly to prevent detached HEAD
+          git checkout ${{ github.ref_name }}
+          
+          # Write new versions back to versions.json
+          echo "{\"nothing_tag\":\"${{ env.NEW_NOTHING }}\",\"ksu_version\":\"${{ env.NEW_KSU }}\",\"ksun_version\":\"${{ env.NEW_KSUN }}\",\"sukisu_version\":\"${{ env.NEW_SUKI }}\",\"apatch_version\":\"${{ env.NEW_APA }}\",\"folkpatch_version\":\"${{ env.NEW_FOLK }}\"}" > versions.json
+          
+          # pull changes before pushing to avoid conflicts
+          git pull origin ${{ github.ref_name }} --rebase
+          
+          # Commit and push both README.md and versions.json
+          git add versions.json README.md
+          git commit -m "Auto-update tracked versions & README [skip ci]" || echo "No changes to commit"
+          git push origin ${{ github.ref_name }}

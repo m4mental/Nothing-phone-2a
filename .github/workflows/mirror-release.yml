@@ -44,9 +44,9 @@ jobs:
           echo "LATEST_TAG=$LATEST_TAG" >> $GITHUB_ENV
           echo "Found Release: $LATEST_TAG"
           
-          # Original description body save karna aur custom message add karna
+          # Description body save karna aur custom message add karna
           echo "$RELEASE_JSON" | jq -r '.body' > release_body.txt
-          echo -e "\n\n---\n### 🛡️ Patched Root Images Added (Compatible with Latest Stable APKs):\n- **APatch SuperKey:** \`${{ github.event.inputs.superkey }}\` (APatch app mein use karein).\n- **FolkPatch SuperKey:** Default (\`su\`).\n- **Boot Images patched:** APatch, FolkPatch.\n- **Init_Boot Images patched:** KernelSU, KernelSU-Next (Works on both Normal & Spoof APKs), SukiSU-Ultra.\n- *(ReSukiSU is excluded as requested)*" >> release_body.txt
+          echo -e "\n\n---\n### 📂 Patched Partition Images (Clean Names):\nAapke Nothing Phone (2a) (Pacman) ke liye niche di gayi images is release mein generate ki gayi hain:\n\n- **\`APatch-boot.img\`** -> APatch manager se root karne ke liye is boot image ko flash karein.\n- **\`FolkPatch-boot.img\`** -> FolkPatch manager se root karne ke liye is boot image ko flash karein (FolkPatch ki SuperKey \`su\` hai).\n- **\`KernelSU-init_boot.img\`** -> Official KernelSU ke liye is init_boot image ko flash karein.\n- **\`KernelSU-Next-init_boot.img\`** -> KernelSU-Next (Normal aur Spoof dono APKs ke liye) is init_boot image ko flash karein.\n- **\`SukiSU-Ultra-init_boot.img\`** -> SukiSU-Ultra root manager ke liye is init_boot image ko flash karein.\n- **\`stock-boot.img\` / \`stock-init_boot.img\`** -> Original unmodified files (Backup ke liye)." >> release_body.txt
           
           # image-boot.7z file ka download link nikalna
           IMAGE_BOOT_URL=$(echo "$RELEASE_JSON" | jq -r '.assets[] | select(.name | contains("image-boot.7z")) | .browser_download_url')
@@ -153,7 +153,7 @@ jobs:
           mv kernel kernel-b
           ./kptools-linux -p --image kernel-b --skey "${{ github.event.inputs.superkey }}" --kpimg kpimg-android --out kernel
           ./kptools-linux repack boot.img
-          mv new-boot.img assets_to_upload/${{ env.LATEST_TAG }}-patched-APatch-boot.img
+          mv new-boot.img assets_to_upload/APatch-boot.img
           rm -f kernel-b kernel ramdisk.cpio new-boot.img
           
           # 2. FolkPatch
@@ -161,7 +161,7 @@ jobs:
           mv kernel kernel-b
           ./kptools-linux -p --image kernel-b --skey "su" --kpimg kpimg-android --out kernel
           ./kptools-linux repack boot.img
-          mv new-boot.img assets_to_upload/${{ env.LATEST_TAG }}-patched-FolkPatch-boot.img
+          mv new-boot.img assets_to_upload/FolkPatch-boot.img
           rm -f kernel-b kernel ramdisk.cpio new-boot.img
 
       - name: Patch init_boot.img via LKM Ramdisk Injection
@@ -202,13 +202,13 @@ jobs:
           }
           
           # 3. KernelSU (Official) init_boot patching
-          patch_init_boot_lkm kernelsu-official.ko "${{ env.LATEST_TAG }}-patched-KernelSU-init_boot.img"
+          patch_init_boot_lkm kernelsu-official.ko "KernelSU-init_boot.img"
           
           # 4. KernelSU-Next (Works on both Normal and Spoof APK Managers)
-          patch_init_boot_lkm kernelsu-next.ko "${{ env.LATEST_TAG }}-patched-KernelSU-Next-init_boot.img"
+          patch_init_boot_lkm kernelsu-next.ko "KernelSU-Next-init_boot.img"
           
           # 5. SukiSU-Ultra init_boot patching
-          patch_init_boot_lkm sukisu-ultra.ko "${{ env.LATEST_TAG }}-patched-SukiSU-Ultra-init_boot.img"
+          patch_init_boot_lkm sukisu-ultra.ko "SukiSU-Ultra-init_boot.img"
 
       - name: Create Release and Upload Patched Partition Images
         uses: softprops/action-gh-release@v2

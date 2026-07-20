@@ -1,0 +1,76 @@
+name: Mirror Nothing Phone 2a Release
+
+on:
+  workflow_dispatch: # Is se aap isko jab chahein ek click par run kar sakte hain
+
+permissions:
+  contents: write # Release create karne ke liye zaroori hai
+
+jobs:
+  mirror-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Fetch Latest Pacman Release Details
+        id: fetch_details
+        run: |
+          REPO="spike0en/nothing_archive"
+          CODENAME="Pacman"
+          
+          # Source repo ke releases check karna
+          RELEASES=$(curl -s "https://api.github.com/repos/$REPO/releases")
+          
+          # Latest Pacman release tag dhoondhna
+          LATEST_TAG=$(echo "$RELEASES" | jq -r --arg codename "$CODENAME" '.[] | select(.tag_name | contains($codename)) | .tag_name' | head -n 1)
+          
+          if [ -z "$LATEST_TAG" ] || [ "$LATEST_TAG" == "null" ]; then
+            echo "Error: Pacman release nahi mili!"
+            exit 1
+          fi
+          
+          echo "LATEST_TAG=$LATEST_TAG" >> $GITHUB_ENV
+          echo "Latest Pacman Release Found: $LATEST_TAG"
+          
+          # image-boot.7z file ka download link nikalna
+          BOOT_URL=$(echo "$RELEASES" | jq -r --arg tag "$LATEST_TAG" '.[] | select(.tag_name == $tag) | .assets[] | select(.name | contains("image-boot.7z")) | .browser_download_url')
+          BOOT_NAME=$(basename "$BOOT_URL")
+          echo "BOOT_URL=$BOOT_URL" >> $GITHUB_ENV
+          echo "BOOT_NAME=$BOOT_NAME" >> $GITHUB_ENV
+          
+          # image-firmware.7z file ka download link nikalna
+          FIRMWARE_URL=$(echo "$RELEASES" | jq -r --arg tag "$LATEST_TAG" '.[] | select(.tag_name == $tag) | .assets[] | select(.name | contains("image-firmware.7z")) | .browser_download_url')
+          if [ ! -z "$FIRMWARE_URL" ] && [ "$FIRMWARE_URL" != "null" ]; then
+            FIRMWARE_NAME=$(basename "$FIRMWARE_URL")
+            echo "FIRMWARE_URL=$FIRMWARE_URL" >> $GITHUB_ENV
+            echo "FIRMWARE_NAME=$FIRMWARE_NAME" >> $GITHUB_ENV
+            echo "HAS_FIRMWARE=true" >> $GITHUB_ENV
+          else
+            echo "HAS_FIRMWARE=false" >> $GITHUB_ENV
+          fi
+
+      - name: Download Assets from Source
+        run: |
+          mkdir assets_to_upload
+          
+          echo "Downloading boot image..."
+          curl -L -o "assets_to_upload/${{ env.BOOT_NAME }}" "${{ env.BOOT_URL }}"
+          
+          if [ "${{ env.HAS_FIRMWARE }}" = "true" ]; then
+            echo "Downloading firmware image..."
+            curl -L -o "assets_to_upload/${{ env.FIRMWARE_NAME }}" "${{ env.FIRMWARE_URL }}"
+          fi
+
+      - name: Create Release and Upload Assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.LATEST_TAG }}
+          name: ${{ env.LATEST_TAG }}
+          body: |
+            Nothing Phone 2a (${{ env.LATEST_TAG }}) ke liye boot aur firmware files.
+            
+            Source Archive: https://github.com/spike0en/nothing_archive
+          files: assets_to_upload/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

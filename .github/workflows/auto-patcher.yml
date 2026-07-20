@@ -1,0 +1,368 @@
+name: Automatic Root Patcher (Autopilot)
+
+on:
+  schedule:
+    - cron: '0 */12 * * *' # Har 12 ghante mein automatic background mein check karega
+  workflow_dispatch: # Manual run karne ke liye option rahega
+
+permissions:
+  contents: write # Repository aur README mein automatic write karne ke liye
+
+jobs:
+  check-and-patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install Tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq curl p7zip-full unzip python3
+
+      - name: Check and Compare Versions
+        id: check_versions
+        run: |
+          # 1. Read existing versions.json or set defaults if not exists
+          if [ ! -f versions.json ]; then
+            echo '{"nothing_tag":"","ksu_version":"","ksun_version":"","sukisu_version":"","apatch_version":"","folkpatch_version":""}' > versions.json
+          fi
+          
+          OLD_NOTHING=$(jq -r '.nothing_tag' versions.json)
+          OLD_KSU=$(jq -r '.ksu_version' versions.json)
+          OLD_KSUN=$(jq -r '.ksun_version' versions.json)
+          OLD_SUKI=$(jq -r '.sukisu_version' versions.json)
+          OLD_APA=$(jq -r '.apatch_version' versions.json)
+          OLD_FOLK=$(jq -r '.folkpatch_version' versions.json)
+          
+          # 2. Fetch latest versions from official APIs
+          REPO="spike0en/nothing_archive"
+          CODENAME="Pacman"
+          RELEASES=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/$REPO/releases")
+          RELEASE_JSON=$(echo "$RELEASES" | jq --arg codename "$CODENAME" '[.[] | select(.tag_name | contains($codename))] | .[0]')
+          NEW_NOTHING=$(echo "$RELEASE_JSON" | jq -r '.tag_name')
+          
+          NEW_KSU=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/tiann/KernelSU/releases/latest" | jq -r '.tag_name')
+          NEW_KSUN=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/KernelSU-Next/KernelSU-Next/releases/latest" | jq -r '.tag_name')
+          NEW_SUKI=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/SukiSU-Ultra/SukiSU-Ultra/releases/latest" | jq -r '.tag_name')
+          NEW_APA=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/bmax121/APatch/releases/latest" | jq -r '.tag_name')
+          NEW_FOLK=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/LyraVoid/FolkPatch/releases/latest" | jq -r '.tag_name')
+          
+          # 3. Determine what needs to be built
+          BUILD_STOCK=false
+          BUILD_KSU=false
+          BUILD_KSUN=false
+          BUILD_SUKI=false
+          BUILD_APA=false
+          BUILD_FOLK=false
+          
+          if [ "$NEW_NOTHING" != "$OLD_NOTHING" ]; then
+            echo "Nothing OS update detected! Full rebuild triggered."
+            BUILD_STOCK=true
+            BUILD_KSU=true
+            BUILD_KSUN=true
+            BUILD_SUKI=true
+            BUILD_APA=true
+            BUILD_FOLK=true
+          else
+            if [ "$NEW_KSU" != "$OLD_KSU" ]; then BUILD_KSU=true; fi
+            if [ "$NEW_KSUN" != "$OLD_KSUN" ]; then BUILD_KSUN=true; fi
+            if [ "$NEW_SUKI" != "$OLD_SUKI" ]; then BUILD_SUKI=true; fi
+            if [ "$NEW_APA" != "$OLD_APA" ]; then BUILD_APA=true; fi
+            if [ "$NEW_FOLK" != "$OLD_FOLK" ]; then BUILD_FOLK=true; fi
+          fi
+          
+          if [ "$BUILD_STOCK" = "true" ] || [ "$BUILD_KSU" = "true" ] || [ "$BUILD_KSUN" = "true" ] || [ "$BUILD_SUKI" = "true" ] || [ "$BUILD_APA" = "true" ] || [ "$BUILD_FOLK" = "true" ]; then
+            ANY_BUILD=true
+          else
+            ANY_BUILD=false
+          fi
+          
+          # Export to env
+          echo "ANY_BUILD=$ANY_BUILD" >> $GITHUB_ENV
+          echo "BUILD_STOCK=$BUILD_STOCK" >> $GITHUB_ENV
+          echo "BUILD_KSU=$BUILD_KSU" >> $GITHUB_ENV
+          echo "BUILD_KSUN=$BUILD_KSUN" >> $GITHUB_ENV
+          echo "BUILD_SUKI=$BUILD_SUKI" >> $GITHUB_ENV
+          echo "BUILD_APA=$BUILD_APA" >> $GITHUB_ENV
+          echo "BUILD_FOLK=$BUILD_FOLK" >> $GITHUB_ENV
+          
+          echo "NEW_NOTHING=$NEW_NOTHING" >> $GITHUB_ENV
+          echo "NEW_KSU=$NEW_KSU" >> $GITHUB_ENV
+          echo "NEW_KSUN=$NEW_KSUN" >> $GITHUB_ENV
+          echo "NEW_SUKI=$NEW_SUKI" >> $GITHUB_ENV
+          echo "NEW_APA=$NEW_APA" >> $GITHUB_ENV
+          echo "NEW_FOLK=$NEW_FOLK" >> $GITHUB_ENV
+          
+          echo "$RELEASE_JSON" | jq -r '.body' > base_body.txt
+
+      - name: Download Stock boot and init_boot from image-boot.7z
+        if: env.ANY_BUILD == 'true'
+        run: |
+          REPO="spike0en/nothing_archive"
+          CODENAME="Pacman"
+          RELEASES=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/$REPO/releases")
+          RELEASE_JSON=$(echo "$RELEASES" | jq --arg codename "$CODENAME" '[.[] | select(.tag_name | contains($codename))] | .[0]')
+          IMAGE_BOOT_URL=$(echo "$RELEASE_JSON" | jq -r '.assets[] | select(.name | contains("image-boot.7z")) | .browser_download_url')
+          
+          echo "Downloading image-boot.7z..."
+          curl -L -o "image-boot.7z" "$IMAGE_BOOT_URL"
+          7z x "image-boot.7z" -o"extracted_temp"
+          find extracted_temp/ -type f -name "boot.img" -exec cp {} . \;
+          find extracted_temp/ -type f -name "init_boot.img" -exec cp {} . \;
+          cp -f boot.img stock-boot.img
+          cp -f init_boot.img stock-init_boot.img
+          rm -rf extracted_temp image-boot.7z
+          
+          if [ "${{ env.BUILD_STOCK }}" = "true" ]; then
+            mkdir -p stock_assets
+            echo "$RELEASE_JSON" | jq -c '.assets[]' | while read -r asset; do
+              ASSET_URL=$(echo "$asset" | jq -r '.browser_download_url')
+              ASSET_NAME=$(echo "$asset" | jq -r '.name')
+              curl -L -o "stock_assets/$ASSET_NAME" "$ASSET_URL"
+            done
+          fi
+
+      - name: Set up magiskboot & kptools
+        if: env.ANY_BUILD == 'true'
+        run: |
+          curl -L -o magiskboot "https://github.com/Uevo001/magiskboot-linux/raw/main/x86_64/magiskboot"
+          chmod +x magiskboot
+          
+          KP_RELEASE=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/bmax121/KernelPatch/releases/latest")
+          KP_TOOLS_URL=$(echo "$KP_RELEASE" | jq -r '.assets[] | select(.name | contains("kptools-linux")) | .browser_download_url')
+          KP_IMG_URL=$(echo "$KP_RELEASE" | jq -r '.assets[] | select(.name | contains("kpimg-android")) | .browser_download_url')
+          curl -L -o kptools-linux "$KP_TOOLS_URL"
+          curl -L -o kpimg-android "$KP_IMG_URL"
+          chmod +x kptools-linux
+
+      - name: Fetch Latest Stable GKI Modules and APKs
+        if: env.ANY_BUILD == 'true'
+        run: |
+          # 1. Official KernelSU Module & APK URL
+          KSU_RELEASE=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/tiann/KernelSU/releases/latest")
+          KSU_KO_URL=$(echo "$KSU_RELEASE" | jq -r '.assets[] | select(.name | contains("android14-5.15_kernelsu.ko")) | .browser_download_url')
+          KSU_APK_URL=$(echo "$KSU_RELEASE" | jq -r '.assets[] | select(.name | endswith(".apk")) | .browser_download_url' | head -n 1)
+          curl -L -o kernelsu-official.ko "$KSU_KO_URL"
+          
+          # 2. KernelSU-Next Normal Module & APK URLs
+          KSUN_RELEASE=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/KernelSU-Next/KernelSU-Next/releases/latest")
+          KSUN_KO_URL=$(echo "$KSUN_RELEASE" | jq -r '.assets[] | select(.name == "android14-5.15_kernelsu.ko") | .browser_download_url')
+          curl -L -o kernelsu-next.ko "$KSUN_KO_URL"
+          
+          KSUN_APK_NORMAL=$(echo "$KSUN_RELEASE" | jq -r '.assets[] | select(.name | contains("release.apk") and (contains("spoofed") | not)) | .browser_download_url' | head -n 1)
+          KSUN_APK_SPOOF=$(echo "$KSUN_RELEASE" | jq -r '.assets[] | select(.name | contains("spoofed") and contains(".apk")) | .browser_download_url' | head -n 1)
+          
+          # Spoofed GKI Module Extraction from Spoofed APK
+          if [ ! -z "$KSUN_APK_SPOOF" ] && [ "$KSUN_APK_SPOOF" != "null" ]; then
+            curl -L -o ksun-spoofed.apk "$KSUN_APK_SPOOF"
+            unzip -o ksun-spoofed.apk -d ksun_spoofed_unzipped
+            SPOOF_KO_PATH=$(find ksun_spoofed_unzipped/ -type f -name "*5.15_kernelsu.ko" -o -name "*5.15*.ko" | head -n 1)
+            if [ ! -z "$SPOOF_KO_PATH" ]; then
+              cp "$SPOOF_KO_PATH" kernelsu-next-spoof.ko
+            else
+              cp kernelsu-next.ko kernelsu-next-spoof.ko
+            fi
+            rm -rf ksun_spoofed_unzipped ksun-spoofed.apk
+          else
+            cp kernelsu-next.ko kernelsu-next-spoof.ko
+          fi
+          
+          # 3. SukiSU-Ultra Module & APK URL
+          SUKI_RELEASE=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/SukiSU-Ultra/SukiSU-Ultra/releases/latest")
+          SUKI_KO_URL=$(echo "$SUKI_RELEASE" | jq -r '.assets[] | select(.name | contains("android14-5.15_kernelsu.ko")) | .browser_download_url')
+          SUKI_APK_URL=$(echo "$SUKI_RELEASE" | jq -r '.assets[] | select(.name | endswith(".apk")) | .browser_download_url' | head -n 1)
+          if [ ! -z "$SUKI_KO_URL" ] && [ "$SUKI_KO_URL" != "null" ]; then
+            curl -L -o sukisu-ultra.ko "$SUKI_KO_URL"
+          else
+            cp kernelsu-official.ko sukisu-ultra.ko
+          fi
+          
+          # 4. Fetch APatch APK URL
+          APA_RELEASE=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/bmax121/APatch/releases/latest")
+          APA_APK_URL=$(echo "$APA_RELEASE" | jq -r '.assets[] | select(.name | endswith(".apk")) | .browser_download_url' | head -n 1)
+          
+          # 5. Fetch FolkPatch APK URL
+          FOLK_RELEASE=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/LyraVoid/FolkPatch/releases/latest")
+          FOLK_APK_URL=$(echo "$FOLK_RELEASE" | jq -r '.assets[] | select(.name | endswith(".apk")) | .browser_download_url' | head -n 1)
+          
+          # Fallbacks
+          if [ -z "$KSU_APK_URL" ] || [ "$KSU_APK_URL" == "null" ]; then KSU_APK_URL="https://github.com/tiann/KernelSU/releases"; fi
+          if [ -z "$KSUN_APK_NORMAL" ] || [ "$KSUN_APK_NORMAL" == "null" ]; then KSUN_APK_NORMAL="https://github.com/KernelSU-Next/KernelSU-Next/releases"; fi
+          if [ -z "$KSUN_APK_SPOOF" ] || [ "$KSUN_APK_SPOOF" == "null" ]; then KSUN_APK_SPOOF="https://github.com/KernelSU-Next/KernelSU-Next/releases"; fi
+          if [ -z "$SUKI_APK_URL" ] || [ "$SUKI_APK_URL" == "null" ]; then SUKI_APK_URL="https://github.com/SukiSU-Ultra/SukiSU-Ultra/releases"; fi
+          if [ -z "$APA_APK_URL" ] || [ "$APA_APK_URL" == "null" ]; then APA_APK_URL="https://github.com/bmax121/APatch/releases"; fi
+          if [ -z "$FOLK_APK_URL" ] || [ "$FOLK_APK_URL" == "null" ]; then FOLK_APK_URL="https://github.com/LyraVoid/FolkPatch/releases"; fi
+          
+          # Create description files
+          cp base_body.txt desc_apatch.txt
+          echo -e "\n\n---\n### 🛡️ APatch Patched Boot Image:\n- **APatch SuperKey:** \`${{ github.event.inputs.superkey }}\`\n- **File to Flash:** \`APatch-boot.img\`\n- **Backup File:** \`stock-boot.img\`\n\n### 📥 Direct Download Link:\n- [Download APatch APK]($APA_APK_URL)" >> desc_apatch.txt
+          
+          cp base_body.txt desc_folkpatch.txt
+          echo -e "\n\n---\n### 🛡️ FolkPatch Patched Boot Image:\n- **FolkPatch SuperKey:** Default (\`su\`)\n- **File to Flash:** \`FolkPatch-boot.img\`\n- **Backup File:** \`stock-boot.img\`\n\n### 📥 Direct Download Link:\n- [Download FolkPatch APK]($FOLK_APK_URL)" >> desc_folkpatch.txt
+          
+          cp base_body.txt desc_ksu.txt
+          echo -e "\n\n---\n### 🛡️ KernelSU Patched Init_Boot Image:\n- **File to Flash:** \`KernelSU-init_boot.img\`\n- **Backup File:** \`stock-init_boot.img\`\n\n### 📥 Direct Download Link:\n- [Download KernelSU APK]($KSU_APK_URL)" >> desc_ksu.txt
+          
+          cp base_body.txt desc_ksun.txt
+          echo -e "\n\n---\n### 🛡️ KernelSU-Next Patched Init_Boot Images:\n- **Files to Flash:** \`KernelSU-Next-Normal-init_boot.img\` ya \`KernelSU-Next-Spoof-init_boot.img\`\n- **Backup File:** \`stock-init_boot.img\`\n\n### 📥 Direct Download Links:\n- [Download Normal APK]($KSUN_APK_NORMAL)\n- [Download Spoofed APK (SUSFS/Spoof)]($KSUN_APK_SPOOF)" >> desc_ksun.txt
+          
+          cp base_body.txt desc_suki.txt
+          echo -e "\n\n---\n### 🛡️ SukiSU-Ultra Patched Init_Boot Image:\n- **File to Flash:** \`SukiSU-Ultra-init_boot.img\`\n- **Backup File:** \`stock-init_boot.img\`\n\n### 📥 Direct Download Link:\n- [Download SukiSU-Ultra APK]($SUKI_APK_URL)" >> desc_suki.txt
+
+          # Save APK URLs to Env for README generator
+          echo "KSU_APK_URL=$KSU_APK_URL" >> $GITHUB_ENV
+          echo "KSUN_APK_NORMAL=$KSUN_APK_NORMAL" >> $GITHUB_ENV
+          echo "KSUN_APK_SPOOF=$KSUN_APK_SPOOF" >> $GITHUB_ENV
+          echo "SUKI_APK_URL=$SUKI_APK_URL" >> $GITHUB_ENV
+          echo "APA_APK_URL=$APA_APK_URL" >> $GITHUB_ENV
+          echo "FOLK_APK_URL=$FOLK_APK_URL" >> $GITHUB_ENV
+
+      - name: Patch boot.img for APatch
+        if: env.BUILD_APA == 'true'
+        run: |
+          ./kptools-linux unpack boot.img
+          mv kernel kernel-b
+          ./kptools-linux -p --image kernel-b --skey "${{ github.event.inputs.superkey }}" --kpimg kpimg-android --out kernel
+          ./kptools-linux repack boot.img
+          mv new-boot.img APatch-boot.img
+          rm -f kernel-b kernel ramdisk.cpio new-boot.img
+
+      - name: Patch boot.img for FolkPatch
+        if: env.BUILD_FOLK == 'true'
+        run: |
+          ./kptools-linux unpack boot.img
+          mv kernel kernel-b
+          ./kptools-linux -p --image kernel-b --skey "su" --kpimg kpimg-android --out kernel
+          ./kptools-linux repack boot.img
+          mv new-boot.img FolkPatch-boot.img
+          rm -f kernel-b kernel ramdisk.cpio new-boot.img
+
+      - name: Patch init_boot.img via LKM Ramdisk Injection
+        if: env.ANY_BUILD == 'true'
+        run: |
+          patch_init_boot_lkm() {
+            local ko_file=$1
+            local output_name=$2
+            
+            ./magiskboot unpack init_boot.img
+            mkdir -p rd && cd rd && cpio -idmv < ../ramdisk.cpio
+            mkdir -p lib/modules && cp -f ../$ko_file lib/modules/kernelsu.ko
+            
+            if [ -f init.rc ]; then
+              sed -i 's/on early-init/on early-init\n    insmod \/lib\/modules\/kernelsu.ko/g' init.rc
+            else
+              echo -e "on early-init\n    insmod /lib/modules/kernelsu.ko" >> init.rc
+            fi
+            
+            find . | cpio -o -H newc > ../ramdisk.cpio
+            cd .. && rm -rf rd
+            ./magiskboot repack init_boot.img
+            mv new-boot.img $output_name
+            ./magiskboot cleanup
+          }
+          
+          if [ "${{ env.BUILD_KSU }}" = "true" ]; then patch_init_boot_lkm kernelsu-official.ko "KernelSU-init_boot.img"; fi
+          if [ "${{ env.BUILD_KSUN }}" = "true" ]; then patch_init_boot_lkm kernelsu-next.ko "KernelSU-Next-Normal-init_boot.img"; fi
+          if [ "${{ env.BUILD_KSUN }}" = "true" ]; then patch_init_boot_lkm kernelsu-next-spoof.ko "KernelSU-Next-Spoof-init_boot.img"; fi
+          if [ "${{ env.BUILD_SUKI }}" = "true" ]; then patch_init_boot_lkm sukisu-ultra.ko "SukiSU-Ultra-init_boot.img"; fi
+
+      # ----------------------------------------------------
+      # Releases uploads conditionally
+      # ----------------------------------------------------
+      - name: Create Stock Update Release
+        if: env.BUILD_STOCK == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.NEW_NOTHING }}
+          name: ${{ env.NEW_NOTHING }}
+          body_path: base_body.txt
+          files: stock_assets/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create APatch Release
+        if: env.BUILD_APA == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.NEW_NOTHING }}-APatch-${{ env.NEW_APA }}
+          name: ${{ env.NEW_NOTHING }} - APatch (${{ env.NEW_APA }})
+          body_path: desc_apatch.txt
+          files: |
+            APatch-boot.img
+            stock-boot.img
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create FolkPatch Release
+        if: env.BUILD_FOLK == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.NEW_NOTHING }}-FolkPatch-${{ env.NEW_FOLK }}
+          name: ${{ env.NEW_NOTHING }} - FolkPatch (${{ env.NEW_FOLK }})
+          body_path: desc_folkpatch.txt
+          files: |
+            FolkPatch-boot.img
+            stock-boot.img
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create KernelSU Release
+        if: env.BUILD_KSU == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.NEW_NOTHING }}-KernelSU-${{ env.NEW_KSU }}
+          name: ${{ env.NEW_NOTHING }} - KernelSU (${{ env.NEW_KSU }})
+          body_path: desc_ksu.txt
+          files: |
+            KernelSU-init_boot.img
+            stock-init_boot.img
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create KernelSU-Next Release
+        if: env.BUILD_KSUN == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.NEW_NOTHING }}-KernelSU-Next-${{ env.NEW_KSUN }}
+          name: ${{ env.NEW_NOTHING }} - KernelSU-Next (${{ env.NEW_KSUN }})
+          body_path: desc_ksun.txt
+          files: |
+            KernelSU-Next-Normal-init_boot.img
+            KernelSU-Next-Spoof-init_boot.img
+            stock-init_boot.img
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create SukiSU-Ultra Release
+        if: env.BUILD_SUKI == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.NEW_NOTHING }}-SukiSU-Ultra-${{ env.NEW_SUKI }}
+          name: ${{ env.NEW_NOTHING }} - SukiSU-Ultra (${{ env.NEW_SUKI }})
+          body_path: desc_suki.txt
+          files: |
+            SukiSU-Ultra-init_boot.img
+            stock-init_boot.img
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate Dynamic README.md
+        if: env.ANY_BUILD == 'true'
+        run: |
+          # Get current date in IST timezone (Asia/Kolkata)
+          CURR_DATE=$(TZ="Asia/Kolkata" date +"%d %b %Y, %I:%M %p %Z")
+          
+          # Construct precise release URLs using newest tags
+          URL_STOCK="https://github.com/${{ github.repository }}/releases/tag/${{ env.NEW_NOTHING }}"
+          URL_APA="https://github.com/${{ github.repository }}/releases/tag/${{ env.NEW_NOTHING }}-APatch-${{ env.NEW_APA }}"
+          URL_FOLK="https://github.com/${{ github.repository }}/releases/tag/${{ env.NEW_NOTHING }}-FolkPatch-${{ env.NEW_FOLK }}"
+          URL_KSU="https://github.com/${{ github.repository }}/releases/tag/${{ env.NEW_NOTHING }}-KernelSU-${{ env.NEW_KSU }}"
+          URL_KSUN="https://github.com/${{ github.repository }}/releases/tag/${{ env.NEW_NOTHING }}-KernelSU-Next-${{ env.NEW_KSUN }}"
+          URL_SUKI="https://github.com/${{ github.repository }}/releases/tag/${{ env.NEW_NOTHING }}-SukiSU-Ultra-${{ env.NEW_SUKI }}"
+          
+          # Generate clean README markdown
+          cat << EOF > README.md
+          # Nothing Phone (2a) - Autopilot Root Patcher Hub 🛡️
+
+          Welcome to your personal automatic rooting hub! This repository automati

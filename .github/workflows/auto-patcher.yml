@@ -158,13 +158,13 @@ jobs:
       - name: Fetch Latest Stable GKI Modules and APKs
         if: env.ANY_BUILD == 'true'
         run: |
-          # 1. Official KernelSU Module & APK URL
+          # 1. Official Latest Stable KernelSU Module & APK URL
           KSU_RELEASE=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/tiann/KernelSU/releases/latest")
           KSU_KO_URL=$(echo "$KSU_RELEASE" | jq -r '.assets[] | select(.name | contains("android14-5.15_kernelsu.ko")) | .browser_download_url')
           KSU_APK_URL=$(echo "$KSU_RELEASE" | jq -r '.assets[] | select(.name | endswith(".apk")) | .browser_download_url' | head -n 1)
           curl -L -o kernelsu-official.ko "$KSU_KO_URL"
           
-          # 2. KernelSU-Next Normal Module & APK URLs
+          # 2. Latest Stable KernelSU-Next (Normal & Spoof)
           KSUN_RELEASE=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/KernelSU-Next/KernelSU-Next/releases/latest")
           KSUN_KO_URL=$(echo "$KSUN_RELEASE" | jq -r '.assets[] | select(.name == "android14-5.15_kernelsu.ko") | .browser_download_url')
           curl -L -o kernelsu-next.ko "$KSUN_KO_URL"
@@ -426,10 +426,12 @@ jobs:
           # Write new versions back to versions.json
           echo "{\"nothing_tag\":\"${{ env.NEW_NOTHING }}\",\"ksu_version\":\"${{ env.NEW_KSU }}\",\"ksun_version\":\"${{ env.NEW_KSUN }}\",\"sukisu_version\":\"${{ env.NEW_SUKI }}\",\"apatch_version\":\"${{ env.NEW_APA }}\",\"folkpatch_version\":\"${{ env.NEW_FOLK }}\"}" > versions.json
           
+          # Stage files before pulling/rebasing to avoid unstaged conflict
+          git add versions.json README.md
+          git commit -m "Auto-update tracked versions & README [skip ci]" || echo "No changes to commit"
+          
           # pull changes before pushing to avoid conflicts
           git pull origin ${{ github.ref_name }} --rebase
           
-          # Commit and push both README.md and versions.json
-          git add versions.json README.md
-          git commit -m "Auto-update tracked versions & README [skip ci]" || echo "No changes to commit"
+          # Push to branch
           git push origin ${{ github.ref_name }}

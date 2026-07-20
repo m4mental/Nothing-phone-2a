@@ -1,29 +1,36 @@
-name: Mirror Nothing Phone 2a Release
+name: Mirror All Nothing Phone 2a Assets
 
 on:
-  workflow_dispatch: # Is se aap isko jab chahein ek click par run kar sakte hain
+  workflow_dispatch:
 
 permissions:
-  contents: write # Release create karne ke liye zaroori hai
+  contents: write
 
 jobs:
-  mirror-release:
+  mirror-all:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Fetch Latest Pacman Release Details
-        id: fetch_details
+      - name: Install Tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq curl
+
+      - name: Fetch and Process Release
+        id: process_release
         run: |
           REPO="spike0en/nothing_archive"
           CODENAME="Pacman"
           
-          # Source repo ke releases check karna
+          # Source repo se releases fetch karna
           RELEASES=$(curl -s "https://api.github.com/repos/$REPO/releases")
           
-          # Latest Pacman release tag dhoondhna
-          LATEST_TAG=$(echo "$RELEASES" | jq -r --arg codename "$CODENAME" '.[] | select(.tag_name | contains($codename)) | .tag_name' | head -n 1)
+          # Latest Pacman release dhoondhna
+          RELEASE_JSON=$(echo "$RELEASES" | jq --arg codename "$CODENAME" '[.[] | select(.tag_name | contains($codename))] | .[0]')
+          
+          LATEST_TAG=$(echo "$RELEASE_JSON" | jq -r '.tag_name')
           
           if [ -z "$LATEST_TAG" ] || [ "$LATEST_TAG" == "null" ]; then
             echo "Error: Pacman release nahi mili!"
@@ -31,46 +38,29 @@ jobs:
           fi
           
           echo "LATEST_TAG=$LATEST_TAG" >> $GITHUB_ENV
-          echo "Latest Pacman Release Found: $LATEST_TAG"
+          echo "Found Release: $LATEST_TAG"
           
-          # image-boot.7z file ka download link nikalna
-          BOOT_URL=$(echo "$RELEASES" | jq -r --arg tag "$LATEST_TAG" '.[] | select(.tag_name == $tag) | .assets[] | select(.name | contains("image-boot.7z")) | .browser_download_url')
-          BOOT_NAME=$(basename "$BOOT_URL")
-          echo "BOOT_URL=$BOOT_URL" >> $GITHUB_ENV
-          echo "BOOT_NAME=$BOOT_NAME" >> $GITHUB_ENV
+          # Original description (body) extract karna jisme official OTA ke download links hain
+          echo "$RELEASE_JSON" | jq -r '.body' > release_body.txt
           
-          # image-firmware.7z file ka download link nikalna
-          FIRMWARE_URL=$(echo "$RELEASES" | jq -r --arg tag "$LATEST_TAG" '.[] | select(.tag_name == $tag) | .assets[] | select(.name | contains("image-firmware.7z")) | .browser_download_url')
-          if [ ! -z "$FIRMWARE_URL" ] && [ "$FIRMWARE_URL" != "null" ]; then
-            FIRMWARE_NAME=$(basename "$FIRMWARE_URL")
-            echo "FIRMWARE_URL=$FIRMWARE_URL" >> $GITHUB_ENV
-            echo "FIRMWARE_NAME=$FIRMWARE_NAME" >> $GITHUB_ENV
-            echo "HAS_FIRMWARE=true" >> $GITHUB_ENV
-          else
-            echo "HAS_FIRMWARE=false" >> $GITHUB_ENV
-          fi
-
-      - name: Download Assets from Source
-        run: |
+          # Aapke liye simple text instructions description ke niche append (add) karna
+          echo -e "\n\n---\n### 📢 OTA Update Information (Hinglish Guide):\n- **Kaun sa OTA Incremental hai?**\n  Upar description mein arrow (\`->\`) ke right side (daayein) likha hua version aapka **Incremental OTA** hai.\n- **Download Link:**\n  Upar blue color ke text par click karke aap direct OTA zip download kar sakte hain. Arrow (\`->\`) ke right side wala link hi aapke incremental ota ka official download link hai." >> release_body.txt
+          
+          # Folder banakar saari files (logical, boot, firmware, sha256) download karna
           mkdir assets_to_upload
-          
-          echo "Downloading boot image..."
-          curl -L -o "assets_to_upload/${{ env.BOOT_NAME }}" "${{ env.BOOT_URL }}"
-          
-          if [ "${{ env.HAS_FIRMWARE }}" = "true" ]; then
-            echo "Downloading firmware image..."
-            curl -L -o "assets_to_upload/${{ env.FIRMWARE_NAME }}" "${{ env.FIRMWARE_URL }}"
-          fi
+          echo "$RELEASE_JSON" | jq -c '.assets[]' | while read -r asset; do
+            ASSET_URL=$(echo "$asset" | jq -r '.browser_download_url')
+            ASSET_NAME=$(echo "$asset" | jq -r '.name')
+            echo "Downloading $ASSET_NAME..."
+            curl -L -o "assets_to_upload/$ASSET_NAME" "$ASSET_URL"
+          done
 
-      - name: Create Release and Upload Assets
+      - name: Create Release and Upload All Assets
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.LATEST_TAG }}
           name: ${{ env.LATEST_TAG }}
-          body: |
-            Nothing Phone 2a (${{ env.LATEST_TAG }}) ke liye boot aur firmware files.
-            
-            Source Archive: https://github.com/spike0en/nothing_archive
+          body_path: release_body.txt
           files: assets_to_upload/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

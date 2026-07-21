@@ -26,11 +26,11 @@ Click below to download patched boot images for APatch and FolkPatch:
 
 ---
 
-### 🧬 Patched Init_Boot Images (KernelSU, KernelSU-Next, SukiSU-Ultra)
-Click below to download patched init_boot images for KernelSU and compatible modules (LKM GKI2 mode):
-*   👉 **[Download Latest KernelSU Patched Init_Boot](https://github.com/m4mental/Nothing-phone-2a/releases/tag/KernelSU-v3.2.5)**
-*   👉 **[Download Latest KernelSU-Next Patched Init_Boot](https://github.com/m4mental/Nothing-phone-2a/releases/tag/KernelSU-Next-v3.3.0)**
-*   👉 **[Download Latest SukiSU-Ultra Patched Init_Boot](https://github.com/m4mental/Nothing-phone-2a/releases/tag/SukiSU-Ultra-v4.1.3)**
+### 🧬 Patched Boot Images (KernelSU, KernelSU-Next, SukiSU-Ultra)
+Click below to download patched boot images for KernelSU and compatible modules (GKI kernel replacement mode):
+*   👉 **[Download Latest KernelSU Patched Boot](https://github.com/m4mental/Nothing-phone-2a/releases/tag/KernelSU-v3.2.5)**
+*   👉 **[Download Latest KernelSU-Next Patched Boot](https://github.com/m4mental/Nothing-phone-2a/releases/tag/KernelSU-Next-v3.3.0)**
+*   👉 **[Download Latest SukiSU-Ultra Patched Boot](https://github.com/m4mental/Nothing-phone-2a/releases/tag/SukiSU-Ultra-v4.1.3)**
 
 ---
-*Auto-updated by GitHub Actions. Last check: 21 Jul 2026, 10:21 AM IST*
+*Auto-updated by GitHub Actions. Last check: 21 Jul 2026, 09:28 PM IST*

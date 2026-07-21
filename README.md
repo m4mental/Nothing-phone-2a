@@ -21,16 +21,16 @@ If you want to update your phone with official/original stock images (firmware, 
 
 ### 🔑 Patched Boot Images (APatch & FolkPatch)
 Click below to download patched boot images for APatch and FolkPatch:
-*   👉 **[Download Latest APatch Patched Boot](https://github.com/m4mental/Nothing-phone-2a/releases/tag/Pacman_B4.1-260609-1925-APatch-11142)**
-*   👉 **[Download Latest FolkPatch Patched Boot](https://github.com/m4mental/Nothing-phone-2a/releases/tag/Pacman_B4.1-260609-1925-FolkPatch-4.3)**
+*   👉 **[Download Latest APatch Patched Boot](https://github.com/m4mental/Nothing-phone-2a/releases/tag/APatch-11142)**
+*   👉 **[Download Latest FolkPatch Patched Boot](https://github.com/m4mental/Nothing-phone-2a/releases/tag/FolkPatch-4.3)**
 
 ---
 
 ### 🧬 Patched Init_Boot Images (KernelSU, KernelSU-Next, SukiSU-Ultra)
 Click below to download patched init_boot images for KernelSU and compatible modules:
-*   👉 **[Download Latest KernelSU Patched Init_Boot](https://github.com/m4mental/Nothing-phone-2a/releases/tag/Pacman_B4.1-260609-1925-KernelSU-v3.2.5)**
-*   👉 **[Download Latest KernelSU-Next Patched Init_Boot](https://github.com/m4mental/Nothing-phone-2a/releases/tag/Pacman_B4.1-260609-1925-KernelSU-Next-v3.3.0)**
-*   👉 **[Download Latest SukiSU-Ultra Patched Init_Boot](https://github.com/m4mental/Nothing-phone-2a/releases/tag/Pacman_B4.1-260609-1925-SukiSU-Ultra-v4.1.3)**
+*   👉 **[Download Latest KernelSU Patched Init_Boot](https://github.com/m4mental/Nothing-phone-2a/releases/tag/KernelSU-v3.2.5)**
+*   👉 **[Download Latest KernelSU-Next Patched Init_Boot](https://github.com/m4mental/Nothing-phone-2a/releases/tag/KernelSU-Next-v3.3.0)**
+*   👉 **[Download Latest SukiSU-Ultra Patched Init_Boot](https://github.com/m4mental/Nothing-phone-2a/releases/tag/SukiSU-Ultra-v4.1.3)**
 
 ---
-*Auto-updated by GitHub Actions. Last check: 21 Jul 2026, 08:59 AM IST*
+*Auto-updated by GitHub Actions. Last check: 21 Jul 2026, 09:15 AM IST*

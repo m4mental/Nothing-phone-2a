@@ -2,16 +2,16 @@ name: Automatic Root Patcher (Autopilot)
 
 on:
   schedule:
-    - cron: '0 */12 * * *' # Har 12 ghante mein automatic background mein check karega
-  workflow_dispatch: # Manual ek click par run karne ke liye bhi option rahega
+    - cron: '0 */12 * * *' # Run automatically every 12 hours
+  workflow_dispatch: # Allows manual trigger via a single click
     inputs:
       superkey:
-        description: 'APatch ke liye SuperKey dalein'
+        description: 'APatch SuperKey'
         required: true
-        default: 'root@123' # Default password is now root@123
+        default: 'root@123' # Default password
 
 permissions:
-  contents: write # Repository aur README mein automatic write karne ke liye
+  contents: write # Required to write commits and create releases
 
 jobs:
   check-and-patch:
@@ -20,7 +20,7 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Full git history fetch karna push safety ke liye
+          fetch-depth: 0 # Fetch full history for safe pushing
 
       - name: Install Tools
         run: |
@@ -215,19 +215,19 @@ jobs:
           
           # Create description files
           cp base_body.txt desc_apatch.txt
-          echo -e "\n\n---\n### 🛡️ APatch Patched Boot Image:\n- **APatch SuperKey:** \`${{ github.event.inputs.superkey }}\` (Is SuperKey/password ka use APatch app mein root access grant karne ke liye karein).\n- **File to Flash:** \`APatch-boot.img\`\n- **Backup File:** \`stock-boot.img\`\n\n### 📥 Direct Download Link:\n- [Download APatch APK]($APA_APK_URL)" >> desc_apatch.txt
+          echo -e "\n\n---\n### 📖 Flashing & Update Guide:\n- For complete step-by-step flashing instructions and safe OTA update methods, please refer to the [Official Guide](https://github.com/${{ github.repository }}/blob/main/GUIDE.md).\n\n### 🛡️ APatch Patched Boot Image:\n- **APatch SuperKey:** \`${{ github.event.inputs.superkey }}\` (Use this SuperKey/password inside the APatch app to grant root access).\n- **File to Flash:** \`APatch-boot.img\`\n- **Backup File:** \`stock-boot.img\`\n\n### 📥 Direct Download Link:\n- [Download APatch APK]($APA_APK_URL)" >> desc_apatch.txt
           
           cp base_body.txt desc_folkpatch.txt
-          echo -e "\n\n---\n### 🛡️ FolkPatch Patched Boot Image:\n- **FolkPatch SuperKey:** Default (\`su\`)\n- **File to Flash:** \`FolkPatch-boot.img\`\n- **Backup File:** \`stock-boot.img\`\n\n### 📥 Direct Download Link:\n- [Download FolkPatch APK]($FOLK_APK_URL)" >> desc_folkpatch.txt
+          echo -e "\n\n---\n### 📖 Flashing & Update Guide:\n- For complete step-by-step flashing instructions and safe OTA update methods, please refer to the [Official Guide](https://github.com/${{ github.repository }}/blob/main/GUIDE.md).\n\n### 🛡️ FolkPatch Patched Boot Image:\n- **FolkPatch SuperKey:** Default (\`su\`)\n- **File to Flash:** \`FolkPatch-boot.img\`\n- **Backup File:** \`stock-boot.img\`\n\n### 📥 Direct Download Link:\n- [Download FolkPatch APK]($FOLK_APK_URL)" >> desc_folkpatch.txt
           
           cp base_body.txt desc_ksu.txt
-          echo -e "\n\n---\n### 🛡️ KernelSU Patched Init_Boot Image:\n- **File to Flash:** \`KernelSU-init_boot.img\`\n- **Backup File:** \`stock-init_boot.img\`\n\n### 📥 Direct Download Link:\n- [Download KernelSU APK]($KSU_APK_URL)" >> desc_ksu.txt
+          echo -e "\n\n---\n### 📖 Flashing & Update Guide:\n- For complete step-by-step flashing instructions and safe OTA update methods, please refer to the [Official Guide](https://github.com/${{ github.repository }}/blob/main/GUIDE.md).\n\n### 🛡️ KernelSU Patched Init_Boot Image:\n- **File to Flash:** \`KernelSU-init_boot.img\`\n- **Backup File:** \`stock-init_boot.img\`\n\n### 📥 Direct Download Link:\n- [Download KernelSU APK]($KSU_APK_URL)" >> desc_ksu.txt
           
           cp base_body.txt desc_ksun.txt
-          echo -e "\n\n---\n### 🛡️ KernelSU-Next Patched Init_Boot Images:\n- **Files to Flash:** \`KernelSU-Next-Normal-init_boot.img\` ya \`KernelSU-Next-Spoof-init_boot.img\`\n- **Backup File:** \`stock-init_boot.img\`\n\n### 📥 Direct Download Links:\n- [Download Normal APK]($KSUN_APK_NORMAL)\n- [Download Spoofed APK (SUSFS/Spoof)]($KSUN_APK_SPOOF)" >> desc_ksun.txt
+          echo -e "\n\n---\n### 📖 Flashing & Update Guide:\n- For complete step-by-step flashing instructions and safe OTA update methods, please refer to the [Official Guide](https://github.com/${{ github.repository }}/blob/main/GUIDE.md).\n\n### 🛡️ KernelSU-Next Patched Init_Boot Images:\n- **Files to Flash:** \`KernelSU-Next-Normal-init_boot.img\` ya \`KernelSU-Next-Spoof-init_boot.img\`\n- **Backup File:** \`stock-init_boot.img\`\n\n### 📥 Direct Download Links:\n- [Download Normal APK]($KSUN_APK_NORMAL)\n- [Download Spoofed APK (SUSFS/Spoof)]($KSUN_APK_SPOOF)" >> desc_ksun.txt
           
           cp base_body.txt desc_suki.txt
-          echo -e "\n\n---\n### 🛡️ SukiSU-Ultra Patched Init_Boot Image:\n- **File to Flash:** \`SukiSU-Ultra-init_boot.img\`\n- **Backup File:** \`stock-init_boot.img\`\n\n### 📥 Direct Download Link:\n- [Download SukiSU-Ultra APK]($SUKI_APK_URL)" >> desc_suki.txt
+          echo -e "\n\n---\n### 📖 Flashing & Update Guide:\n- For complete step-by-step flashing instructions and safe OTA update methods, please refer to the [Official Guide](https://github.com/${{ github.repository }}/blob/main/GUIDE.md).\n\n### 🛡️ SukiSU-Ultra Patched Init_Boot Image:\n- **File to Flash:** \`SukiSU-Ultra-init_boot.img\`\n- **Backup File:** \`stock-init_boot.img\`\n\n### 📥 Direct Download Link:\n- [Download SukiSU-Ultra APK]($SUKI_APK_URL)" >> desc_suki.txt
 
           # Save APK URLs to Env for README generator
           echo "KSU_APK_URL=$KSU_APK_URL" >> $GITHUB_ENV
@@ -388,24 +388,30 @@ jobs:
 
           ---
 
+          ## 📖 Step-by-Step Guides (Fastboot Flashing & OTA Updates)
+          Learn how to root your device via fastboot and how to safely install official system updates (OTA) without losing data:
+          *   👉 **[Click here to read the Complete Root & OTA Flashing Guide](https://github.com/${{ github.repository }}/blob/main/GUIDE.md)**
+
+          ---
+
           ## 📥 Quick Download Navigation (Latest Releases)
-          Apne phone ke liye sahi download select karne ke liye niche diye gaye buttons/links par click karein:
+          Select the appropriate download for your phone by clicking the links below:
 
           ### 📱 Stock Update (No Root)
-          Agar aapko bina root ke, sirf original stock update files (firmware, logical, boot, etc.) download karni hain, toh yahan click karein:
+          If you want to update your phone with official/original stock images (firmware, logical, boot, etc.) without root, click here:
           *   👉 **[Go to Latest Stock Update Release]($URL_STOCK)**
 
           ---
 
           ### 🔑 Patched Boot Images (APatch & FolkPatch)
-          Apatch aur FolkPatch ke liye patched boot images ko download karne ke liye niche click karein:
+          Click below to download patched boot images for APatch and FolkPatch:
           *   👉 **[Download Latest APatch Patched Boot]($URL_APA)**
           *   👉 **[Download Latest FolkPatch Patched Boot]($URL_FOLK)**
 
           ---
 
           ### 🧬 Patched Init_Boot Images (KernelSU, KernelSU-Next, SukiSU-Ultra)
-          KernelSU aur uske compatible modules se device root karne ke liye patched init_boot images yahan se download karein:
+          Click below to download patched init_boot images for KernelSU and compatible modules:
           *   👉 **[Download Latest KernelSU Patched Init_Boot]($URL_KSU)**
           *   👉 **[Download Latest KernelSU-Next Patched Init_Boot]($URL_KSUN)**
           *   👉 **[Download Latest SukiSU-Ultra Patched Init_Boot]($URL_SUKI)**

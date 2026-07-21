@@ -142,18 +142,26 @@ jobs:
             done
           fi
 
-      - name: Set up magiskboot & kptools
+      - name: Set up magiskboot, kptools & ksud
         if: env.ANY_BUILD == 'true'
         run: |
+          # 1. Setup magiskboot
           curl -L -o magiskboot "https://github.com/Uevo001/magiskboot-linux/raw/main/x86_64/magiskboot"
           chmod +x magiskboot
           
+          # 2. Setup kptools
           KP_RELEASE=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/bmax121/KernelPatch/releases/latest")
           KP_TOOLS_URL=$(echo "$KP_RELEASE" | jq -r '.assets[] | select(.name | contains("kptools-linux")) | .browser_download_url')
           KP_IMG_URL=$(echo "$KP_RELEASE" | jq -r '.assets[] | select(.name | contains("kpimg-android")) | .browser_download_url')
           curl -L -o kptools-linux "$KP_TOOLS_URL"
           curl -L -o kpimg-android "$KP_IMG_URL"
           chmod +x kptools-linux
+
+          # 3. Setup official ksud (KernelSU command line utility for image patching)
+          KSU_RELEASE=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/tiann/KernelSU/releases/latest")
+          KSUD_URL=$(echo "$KSU_RELEASE" | jq -r '.assets[] | select(.name | contains("ksud-x86_64-unknown-linux")) | .browser_download_url' | head -n 1)
+          curl -L -o ksud "$KSUD_URL"
+          chmod +x ksud
 
       - name: Fetch Latest Stable GKI Modules and APKs
         if: env.ANY_BUILD == 'true'
@@ -164,7 +172,7 @@ jobs:
           KSU_APK_URL=$(echo "$KSU_RELEASE" | jq -r '.assets[] | select(.name | endswith(".apk")) | .browser_download_url' | head -n 1)
           curl -L -o kernelsu-official.ko "$KSU_KO_URL"
           
-          # 2. Latest Stable KernelSU-Next Module & APK URLs (Normal & Spoof)
+          # 2. Latest Stable KernelSU-Next (Normal & Spoof)
           KSUN_RELEASE=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/KernelSU-Next/KernelSU-Next/releases/latest")
           KSUN_KO_URL=$(echo "$KSUN_RELEASE" | jq -r '.assets[] | select(.name == "android14-5.15_kernelsu.ko") | .browser_download_url')
           curl -L -o kernelsu-next.ko "$KSUN_KO_URL"
@@ -215,7 +223,7 @@ jobs:
           
           # Create description files
           cp base_body.txt desc_stock.txt
-          echo -e "\n\n---\n### 🔄 How to OTA Update Safely (Anti-Bootloop Method):\nIf your device is rooted, do not install updates directly without restoring stock images. For step-by-step flashing instructions and official system (OTA) update guides, please refer to the [Official Guide](https://github.com/${{ github.repository }}/blob/main/GUIDE.md).\n\n**Quick Summary for Rooted Users:**\n1. Install the system update normally via phone Settings.\n2. Let the device reboot (root will be temporarily lost, which is normal and safe).\n3. Go to our Releases page, download the newly generated patched images matching the new version, and flash them via Fastboot to restore root safely!" >> desc_stock.txt
+          echo -e "\n\n---\n### 🔄 How to OTA Update Safely (Anti-Bootloop Method):\nIf your device is rooted, do not install updates directly without restoring stock images. For step-by-step flashing instructions and official system (OTA) update guides, please refer to our [Official Guide](https://github.com/${{ github.repository }}/blob/main/GUIDE.md).\n\n**Quick Summary for Rooted Users:**\n1. Install the system update normally via phone Settings.\n2. Let the device reboot (root will be temporarily lost, which is normal and safe).\n3. Go to our Releases page, download the newly generated patched images matching the new version, and flash them via Fastboot to restore root safely!" >> desc_stock.txt
 
           cp base_body.txt desc_apatch.txt
           echo -e "\n\n---\n### ℹ️ Build Information:\n- **Nothing OS Build Version Patched:** \`${{ env.NEW_NOTHING }}\`\n\n### 📖 Flashing & Update Guide:\n- For complete step-by-step flashing instructions and safe OTA update methods, please refer to the [Official Guide](https://github.com/${{ github.repository }}/blob/main/GUIDE.md).\n\n### 🛡️ APatch Patched Boot Image:\n- **APatch SuperKey:** \`${{ github.event.inputs.superkey }}\` (Use this SuperKey/password inside the APatch app to grant root access).\n- **File to Flash:** \`APatch-boot.img\`\n- **Backup File:** \`stock-boot.img\`\n\n### 📥 Direct Download Link:\n- [Download APatch APK]($APA_APK_URL)" >> desc_apatch.txt
@@ -260,36 +268,23 @@ jobs:
           mv new-boot.img FolkPatch-boot.img
           rm -f kernel-b kernel ramdisk.cpio new-boot.img
 
-      - name: Patch init_boot.img via LKM Ramdisk Injection (KernelSU, KernelSU-Next, SukiSU-Ultra)
+      - name: Patch init_boot.img via ksud Boot-Patch (KernelSU, KernelSU-Next, SukiSU-Ultra)
         if: env.ANY_BUILD == 'true'
         run: |
-          patch_init_boot_lkm() {
-            local ko_file=$1
-            local output_name=$2
-            
-            echo "Patching init_boot.img with $ko_file..."
-            ./magiskboot unpack init_boot.img
-            
-            mkdir -p rd && cd rd && cpio -idmv < ../ramdisk.cpio
-            mkdir -p lib/modules && cp -f ../$ko_file lib/modules/kernelsu.ko
-            
-            if [ -f init.rc ]; then
-              sed -i 's/on early-init/on early-init\n    insmod \/lib\/modules\/kernelsu.ko/g' init.rc
-            else
-              echo -e "on early-init\n    insmod /lib/modules/kernelsu.ko" >> init.rc
-            fi
-            
-            find . | cpio -o -H newc > ../ramdisk.cpio
-            cd .. && rm -rf rd
-            ./magiskboot repack init_boot.img
-            mv new-boot.img $output_name
-            ./magiskboot cleanup
-          }
+          # Patch images using official ksud binary
+          # This configures SELinux policies, init helper structures and embeds modules flawlessly
+          if [ "${{ env.BUILD_KSU }}" = "true" ]; then
+            ./ksud boot-patch -b init_boot.img -m kernelsu-official.ko --magiskboot ./magiskboot --kmi android14-5.15 -o KernelSU-init_boot.img
+          fi
           
-          if [ "${{ env.BUILD_KSU }}" = "true" ]; then patch_init_boot_lkm kernelsu-official.ko "KernelSU-init_boot.img"; fi
-          if [ "${{ env.BUILD_KSUN }}" = "true" ]; then patch_init_boot_lkm kernelsu-next.ko "KernelSU-Next-Normal-init_boot.img"; fi
-          if [ "${{ env.BUILD_KSUN }}" = "true" ]; then patch_init_boot_lkm kernelsu-next-spoof.ko "KernelSU-Next-Spoof-init_boot.img"; fi
-          if [ "${{ env.BUILD_SUKI }}" = "true" ]; then patch_init_boot_lkm sukisu-ultra.ko "SukiSU-Ultra-init_boot.img"; fi
+          if [ "${{ env.BUILD_KSUN }}" = "true" ]; then
+            ./ksud boot-patch -b init_boot.img -m kernelsu-next.ko --magiskboot ./magiskboot --kmi android14-5.15 -o KernelSU-Next-Normal-init_boot.img
+            ./ksud boot-patch -b init_boot.img -m kernelsu-next-spoof.ko --magiskboot ./magiskboot --kmi android14-5.15 -o KernelSU-Next-Spoof-init_boot.img
+          fi
+          
+          if [ "${{ env.BUILD_SUKI }}" = "true" ]; then
+            ./ksud boot-patch -b init_boot.img -m sukisu-ultra.ko --magiskboot ./magiskboot --kmi android14-5.15 -o SukiSU-Ultra-init_boot.img
+          fi
 
       # ----------------------------------------------------
       # Releases uploads conditionally with clean tag names

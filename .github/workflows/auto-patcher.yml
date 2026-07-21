@@ -167,13 +167,13 @@ jobs:
           curl -L -o kpimg-android "$KP_IMG_URL"
           chmod +x kptools-linux
 
-          # 3. Setup official ksud with robust fallback
-          KSU_RELEASE=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/tiann/KernelSU/releases/latest")
-          KSUD_URL=$(echo "$KSU_RELEASE" | jq -r '.assets[] | select(.name | contains("ksud-x86_64-unknown-linux")) | .browser_download_url' | head -n 1)
+          # 3. Setup official ksud with robust Fede2782/KernelSU stable fallback
+          FEDE_RELEASE=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/Fede2782/KernelSU/releases/latest")
+          KSUD_URL=$(echo "$FEDE_RELEASE" | jq -r '.assets[] | select(.name | contains("ksud-x86_64-unknown-linux-musl")) | .browser_download_url' | head -n 1)
           
           if [ -z "$KSUD_URL" ] || [ "$KSUD_URL" == "null" ]; then
-            echo "Warning: Could not fetch ksud dynamically, using fallback."
-            KSUD_URL="https://github.com/tiann/KernelSU/releases/download/v0.9.5/ksud-x86_64-unknown-linux-musl"
+            echo "Warning: Could not fetch ksud dynamically, using stable fallback."
+            KSUD_URL="https://github.com/Fede2782/KernelSU/releases/download/v1.0.5-legacy3/ksud-x86_64-unknown-linux-musl"
           fi
           
           curl -L -o ksud "$KSUD_URL"

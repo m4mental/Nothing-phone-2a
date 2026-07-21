@@ -287,19 +287,19 @@ jobs:
       - name: Patch init_boot.img via ksud Boot-Patch (KernelSU, KernelSU-Next, SukiSU-Ultra)
         if: env.ANY_BUILD == 'true'
         run: |
-          # Patch images using official ksud binary
-          # This configures SELinux policies, init helper structures and embeds modules flawlessly
+          # Patch images using official ksud binary using ABSOLUTE PATHS to prevent (os error 2)
+          # ksud creates a temporary /tmp directory, so magiskboot and files must be supplied as full paths
           if [ "${{ env.BUILD_KSU }}" = "true" ]; then
-            ./ksud boot-patch -b init_boot.img -m kernelsu-official.ko --magiskboot ./magiskboot --kmi android14-5.15 -o KernelSU-init_boot.img
+            ./ksud boot-patch -b "$(pwd)/init_boot.img" -m "$(pwd)/kernelsu-official.ko" --magiskboot "$(pwd)/magiskboot" --kmi android14-5.15 -o "$(pwd)/KernelSU-init_boot.img"
           fi
           
           if [ "${{ env.BUILD_KSUN }}" = "true" ]; then
-            ./ksud boot-patch -b init_boot.img -m kernelsu-next.ko --magiskboot ./magiskboot --kmi android14-5.15 -o KernelSU-Next-Normal-init_boot.img
-            ./ksud boot-patch -b init_boot.img -m kernelsu-next-spoof.ko --magiskboot ./magiskboot --kmi android14-5.15 -o KernelSU-Next-Spoof-init_boot.img
+            ./ksud boot-patch -b "$(pwd)/init_boot.img" -m "$(pwd)/kernelsu-next.ko" --magiskboot "$(pwd)/magiskboot" --kmi android14-5.15 -o "$(pwd)/KernelSU-Next-Normal-init_boot.img"
+            ./ksud boot-patch -b "$(pwd)/init_boot.img" -m "$(pwd)/kernelsu-next-spoof.ko" --magiskboot "$(pwd)/magiskboot" --kmi android14-5.15 -o "$(pwd)/KernelSU-Next-Spoof-init_boot.img"
           fi
           
           if [ "${{ env.BUILD_SUKI }}" = "true" ]; then
-            ./ksud boot-patch -b init_boot.img -m sukisu-ultra.ko --magiskboot ./magiskboot --kmi android14-5.15 -o SukiSU-Ultra-init_boot.img
+            ./ksud boot-patch -b "$(pwd)/init_boot.img" -m "$(pwd)/sukisu-ultra.ko" --magiskboot "$(pwd)/magiskboot" --kmi android14-5.15 -o "$(pwd)/SukiSU-Ultra-init_boot.img"
           fi
 
       # ----------------------------------------------------

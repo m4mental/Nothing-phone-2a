@@ -145,11 +145,11 @@ jobs:
       - name: Set up magiskboot & kptools
         if: env.ANY_BUILD == 'true'
         run: |
-          # 1. Setup magiskboot
+          # Setup magiskboot
           curl -L -o magiskboot "https://github.com/Uevo001/magiskboot-linux/raw/main/x86_64/magiskboot"
           chmod +x magiskboot
           
-          # 2. Setup kptools with robust fallbacks
+          # Setup kptools with robust fallbacks
           KP_RELEASE=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/bmax121/KernelPatch/releases/latest")
           KP_TOOLS_URL=$(echo "$KP_RELEASE" | jq -r '.assets[] | select(.name == "kptools-linux") | .browser_download_url' | head -n 1)
           KP_IMG_URL=$(echo "$KP_RELEASE" | jq -r '.assets[] | select(.name == "kpimg-android") | .browser_download_url' | head -n 1)
@@ -193,13 +193,25 @@ jobs:
           fi
           curl -L -o ksu-kernel.zip "$KSU_ZIP_URL"
           
-          # 2. Latest Stable KernelSU-Next GKI Zip & APK URL (WildKernels stable scan)
+          # 2. Latest Stable KernelSU-Next GKI Zips & APK URL (Normal & Spoof from WildKernels stable scan)
           WILD_RELEASE_LIST=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/WildKernels/GKI_KernelSU_SUSFS/releases")
+          
+          # Normal Zip
           KSUN_ZIP_URL=""
           while read -r release; do
-            URL=$(echo "$release" | jq -r '.assets[] | select(.name | contains("AnyKernel3") and contains("5.15")) | .browser_download_url' | head -n 1)
+            URL=$(echo "$release" | jq -r '.assets[] | select(.name | contains("AnyKernel3") and contains("5.15") and (contains("Bypass") | not) and (contains("SUSFS") | not)) | .browser_download_url' | head -n 1)
             if [ ! -z "$URL" ] && [ "$URL" != "null" ]; then
               KSUN_ZIP_URL="$URL"
+              break
+            fi
+          done < <(echo "$WILD_RELEASE_LIST" | jq -c '.[]')
+          
+          # Spoof/Bypass Zip
+          KSUN_SPOOF_ZIP_URL=""
+          while read -r release; do
+            URL=$(echo "$release" | jq -r '.assets[] | select(.name | contains("AnyKernel3") and contains("5.15") and (contains("Bypass") or contains("SUSFS"))) | .browser_download_url' | head -n 1)
+            if [ ! -z "$URL" ] && [ "$URL" != "null" ]; then
+              KSUN_SPOOF_ZIP_URL="$URL"
               break
             fi
           done < <(echo "$WILD_RELEASE_LIST" | jq -c '.[]')
@@ -212,7 +224,12 @@ jobs:
             echo "Warning: Using stable fallback for KernelSU-Next GKI Zip."
             KSUN_ZIP_URL="https://github.com/WildKernels/GKI_KernelSU_SUSFS/releases/download/v2.0.0-r19/5.15.153-android13-2024-09-AnyKernel3.zip"
           fi
+          if [ -z "$KSUN_SPOOF_ZIP_URL" ] || [ "$KSUN_SPOOF_ZIP_URL" == "null" ]; then
+            echo "Warning: Using stable fallback for KernelSU-Next Spoof GKI Zip."
+            KSUN_SPOOF_ZIP_URL="https://github.com/WildKernels/GKI_KernelSU_SUSFS/releases/download/v2.0.0-r19/5.15.153-android13-2024-09-Bypass-AnyKernel3.zip"
+          fi
           curl -L -o ksun-kernel.zip "$KSUN_ZIP_URL"
+          curl -L -o ksun-spoof-kernel.zip "$KSUN_SPOOF_ZIP_URL"
           
           # 3. Latest Stable SukiSU-Ultra GKI Zip & APK URL (MiRinFork stable scan)
           SUKI_RELEASE_LIST=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/MiRinFork/GKI_SukiSU_SUSFS/releases")
@@ -264,7 +281,7 @@ jobs:
           echo -e "\n\n---\n### ℹ️ Build Information:\n- **Nothing OS Build Version Patched:** \`${{ env.NEW_NOTHING }}\`\n\n### 📖 Flashing & Update Guide:\n- For complete step-by-step flashing instructions and safe OTA update methods, please refer to the [Official Guide](https://github.com/${{ github.repository }}/blob/main/GUIDE.md).\n\n### 🛡️ KernelSU Patched Boot Image (GKI Kernel Mode):\n- **File to Flash:** \`KernelSU-boot.img\`\n- **Backup File:** \`stock-boot.img\`\n\n### 📥 Direct Download Link:\n- [KernelSU (${{ env.NEW_KSU }}) APK]($KSU_APK_URL)" >> desc_ksu.txt
           
           cp base_body.txt desc_ksun.txt
-          echo -e "\n\n---\n### ℹ️ Build Information:\n- **Nothing OS Build Version Patched:** \`${{ env.NEW_NOTHING }}\`\n\n### 📖 Flashing & Update Guide:\n- For complete step-by-step flashing instructions and safe OTA update methods, please refer to the [Official Guide](https://github.com/${{ github.repository }}/blob/main/GUIDE.md).\n\n### 🛡️ KernelSU-Next Patched Boot Image (GKI Kernel Mode):\n- **File to Flash:** \`KernelSU-Next-boot.img\`\n- **Backup File:** \`stock-boot.img\`\n\n### 📥 Direct Download Links:\n- [KernelSU-Next (${{ env.NEW_KSUN }}) Normal APK]($KSUN_APK_NORMAL)\n- [KernelSU-Next (${{ env.NEW_KSUN }}) Spoofed APK (SUSFS/Spoof)]($KSUN_APK_SPOOF)" >> desc_ksun.txt
+          echo -e "\n\n---\n### ℹ️ Build Information:\n- **Nothing OS Build Version Patched:** \`${{ env.NEW_NOTHING }}\`\n\n### 📖 Flashing & Update Guide:\n- For complete step-by-step flashing instructions and safe OTA update methods, please refer to the [Official Guide](https://github.com/${{ github.repository }}/blob/main/GUIDE.md).\n\n### 🛡️ KernelSU-Next Patched Boot Image (GKI Kernel Mode):\n- **Files to Flash:** \`KernelSU-Next-Normal-boot.img\` ya \`KernelSU-Next-Spoof-boot.img\`\n- **Backup File:** \`stock-boot.img\`\n\n### 📥 Direct Download Links:\n- [KernelSU-Next (${{ env.NEW_KSUN }}) Normal APK]($KSUN_APK_NORMAL)\n- [KernelSU-Next (${{ env.NEW_KSUN }}) Spoofed APK (SUSFS/Spoof)]($KSUN_APK_SPOOF)" >> desc_ksun.txt
           
           cp base_body.txt desc_suki.txt
           echo -e "\n\n---\n### ℹ️ Build Information:\n- **Nothing OS Build Version Patched:** \`${{ env.NEW_NOTHING }}\`\n\n### 📖 Flashing & Update Guide:\n- For complete step-by-step flashing instructions and safe OTA update methods, please refer to the [Official Guide](https://github.com/${{ github.repository }}/blob/main/GUIDE.md).\n\n### 🛡️ SukiSU-Ultra Patched Boot Image (GKI Kernel Mode):\n- **File to Flash:** \`SukiSU-Ultra-boot.img\`\n- **Backup File:** \`stock-boot.img\`\n\n### 📥 Direct Download Link:\n- [SukiSU-Ultra (${{ env.NEW_SUKI }}) APK]($SUKI_APK_URL)" >> desc_suki.txt
@@ -300,7 +317,7 @@ jobs:
       - name: Patch boot.img via GKI Kernel Replacement (KernelSU, KernelSU-Next, SukiSU-Ultra)
         if: env.ANY_BUILD == 'true'
         run: |
-          # Patch images by replacing GKI kernel image inside boot.img (GKI Kernel Mode)
+          # Patch images using AnyKernel3 zip files
           # No ksud required, completely bypassing repack copy failures!
           patch_boot_gki() {
             local zip_file=$1
@@ -328,7 +345,8 @@ jobs:
           fi
           
           if [ "${{ env.BUILD_KSUN }}" = "true" ]; then
-            patch_boot_gki ksun-kernel.zip "KernelSU-Next-boot.img"
+            patch_boot_gki ksun-kernel.zip "KernelSU-Next-Normal-boot.img"
+            patch_boot_gki ksun-spoof-kernel.zip "KernelSU-Next-Spoof-boot.img"
           fi
           
           if [ "${{ env.BUILD_SUKI }}" = "true" ]; then
@@ -396,7 +414,8 @@ jobs:
           name: KernelSU-Next (${{ env.NEW_KSUN }})
           body_path: desc_ksun.txt
           files: |
-            KernelSU-Next-boot.img
+            KernelSU-Next-Normal-boot.img
+            KernelSU-Next-Spoof-boot.img
             stock-boot.img
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

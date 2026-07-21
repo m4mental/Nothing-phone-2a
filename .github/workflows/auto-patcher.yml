@@ -11,7 +11,7 @@ on:
         default: 'root@123' # Default password is now root@123
 
 permissions:
-  contents: write # Repository aur README mein automatic write karne ke liye
+  contents: write # Required to write commits and create releases
 
 jobs:
   check-and-patch:
@@ -149,17 +149,33 @@ jobs:
           curl -L -o magiskboot "https://github.com/Uevo001/magiskboot-linux/raw/main/x86_64/magiskboot"
           chmod +x magiskboot
           
-          # 2. Setup kptools
+          # 2. Setup kptools with robust fallbacks
           KP_RELEASE=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/bmax121/KernelPatch/releases/latest")
-          KP_TOOLS_URL=$(echo "$KP_RELEASE" | jq -r '.assets[] | select(.name | contains("kptools-linux")) | .browser_download_url')
-          KP_IMG_URL=$(echo "$KP_RELEASE" | jq -r '.assets[] | select(.name | contains("kpimg-android")) | .browser_download_url')
+          KP_TOOLS_URL=$(echo "$KP_RELEASE" | jq -r '.assets[] | select(.name == "kptools-linux") | .browser_download_url' | head -n 1)
+          KP_IMG_URL=$(echo "$KP_RELEASE" | jq -r '.assets[] | select(.name == "kpimg-android") | .browser_download_url' | head -n 1)
+          
+          if [ -z "$KP_TOOLS_URL" ] || [ "$KP_TOOLS_URL" == "null" ]; then
+            echo "Warning: Could not fetch kptools-linux dynamically, using fallback."
+            KP_TOOLS_URL="https://github.com/bmax121/KernelPatch/releases/download/0.10.14/kptools-linux"
+          fi
+          if [ -z "$KP_IMG_URL" ] || [ "$KP_IMG_URL" == "null" ]; then
+            echo "Warning: Could not fetch kpimg-android dynamically, using fallback."
+            KP_IMG_URL="https://github.com/bmax121/KernelPatch/releases/download/0.10.14/kpimg-android"
+          fi
+          
           curl -L -o kptools-linux "$KP_TOOLS_URL"
           curl -L -o kpimg-android "$KP_IMG_URL"
           chmod +x kptools-linux
 
-          # 3. Setup official ksud (KernelSU command line utility for image patching)
+          # 3. Setup official ksud with robust fallback
           KSU_RELEASE=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/tiann/KernelSU/releases/latest")
           KSUD_URL=$(echo "$KSU_RELEASE" | jq -r '.assets[] | select(.name | contains("ksud-x86_64-unknown-linux")) | .browser_download_url' | head -n 1)
+          
+          if [ -z "$KSUD_URL" ] || [ "$KSUD_URL" == "null" ]; then
+            echo "Warning: Could not fetch ksud dynamically, using fallback."
+            KSUD_URL="https://github.com/tiann/KernelSU/releases/download/v0.9.5/ksud-x86_64-unknown-linux-musl"
+          fi
+          
           curl -L -o ksud "$KSUD_URL"
           chmod +x ksud
 

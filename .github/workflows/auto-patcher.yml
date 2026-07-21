@@ -289,17 +289,18 @@ jobs:
         run: |
           # Patch images using official ksud binary using ABSOLUTE PATHS to prevent (os error 2)
           # ksud creates a temporary /tmp directory, so magiskboot and files must be supplied as full paths
+          # We use "$(pwd)" to specify the absolute path for -o (output directory) and --out-name for the filename
           if [ "${{ env.BUILD_KSU }}" = "true" ]; then
-            ./ksud boot-patch -b "$(pwd)/init_boot.img" -m "$(pwd)/kernelsu-official.ko" --magiskboot "$(pwd)/magiskboot" --kmi android14-5.15 -o "$(pwd)/KernelSU-init_boot.img"
+            ./ksud boot-patch -b "$(pwd)/init_boot.img" -m "$(pwd)/kernelsu-official.ko" --magiskboot "$(pwd)/magiskboot" --kmi android14-5.15 -o "$(pwd)" --out-name "KernelSU-init_boot.img"
           fi
           
           if [ "${{ env.BUILD_KSUN }}" = "true" ]; then
-            ./ksud boot-patch -b "$(pwd)/init_boot.img" -m "$(pwd)/kernelsu-next.ko" --magiskboot "$(pwd)/magiskboot" --kmi android14-5.15 -o "$(pwd)/KernelSU-Next-Normal-init_boot.img"
-            ./ksud boot-patch -b "$(pwd)/init_boot.img" -m "$(pwd)/kernelsu-next-spoof.ko" --magiskboot "$(pwd)/magiskboot" --kmi android14-5.15 -o "$(pwd)/KernelSU-Next-Spoof-init_boot.img"
+            ./ksud boot-patch -b "$(pwd)/init_boot.img" -m "$(pwd)/kernelsu-next.ko" --magiskboot "$(pwd)/magiskboot" --kmi android14-5.15 -o "$(pwd)" --out-name "KernelSU-Next-Normal-init_boot.img"
+            ./ksud boot-patch -b "$(pwd)/init_boot.img" -m "$(pwd)/kernelsu-next-spoof.ko" --magiskboot "$(pwd)/magiskboot" --kmi android14-5.15 -o "$(pwd)" --out-name "KernelSU-Next-Spoof-init_boot.img"
           fi
           
           if [ "${{ env.BUILD_SUKI }}" = "true" ]; then
-            ./ksud boot-patch -b "$(pwd)/init_boot.img" -m "$(pwd)/sukisu-ultra.ko" --magiskboot "$(pwd)/magiskboot" --kmi android14-5.15 -o "$(pwd)/SukiSU-Ultra-init_boot.img"
+            ./ksud boot-patch -b "$(pwd)/init_boot.img" -m "$(pwd)/sukisu-ultra.ko" --magiskboot "$(pwd)/magiskboot" --kmi android14-5.15 -o "$(pwd)" --out-name "SukiSU-Ultra-init_boot.img"
           fi
 
       # ----------------------------------------------------

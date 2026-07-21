@@ -170,39 +170,46 @@ jobs:
       - name: Fetch Latest Stable GKI Kernels and APKs
         if: env.ANY_BUILD == 'true'
         run: |
-          # 1. Official Latest Stable KernelSU GKI Zip & APK URL (With robust Fede2782/KernelSU stable fallback)
-          KSU_RELEASE=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/Fede2782/KernelSU/releases/latest")
-          KSU_ZIP_URL=$(echo "$KSU_RELEASE" | jq -r '.assets[] | select(.name | contains("AnyKernel3-android14-5.15")) | .browser_download_url' | head -n 1)
-          KSU_APK_URL=$(echo "$KSU_RELEASE" | jq -r '.assets[] | select(.name | endswith(".apk")) | .browser_download_url' | head -n 1)
+          # 1. Official Latest Stable KernelSU GKI Zip & APK URL (With robust stable fallback)
+          KSU_RELEASE=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/tiann/KernelSU/releases")
+          KSU_ZIP_URL=$(echo "$KSU_RELEASE" | jq -r '.[0].assets[] | select(.name | contains("AnyKernel3-android14-5.15")) | .browser_download_url' | head -n 1)
+          KSU_APK_URL=$(echo "$KSU_RELEASE" | jq -r '.[0].assets[] | select(.name | endswith(".apk")) | .browser_download_url' | head -n 1)
           
           if [ -z "$KSU_ZIP_URL" ] || [ "$KSU_ZIP_URL" == "null" ]; then
             echo "Warning: Using stable fallback for KernelSU GKI Zip."
-            KSU_ZIP_URL="https://github.com/Fede2782/KernelSU/releases/download/v1.0.5-legacy3/AnyKernel3-android14-5.15_2024-04.zip"
+            KSU_ZIP_URL="https://github.com/tiann/KernelSU/releases/download/v0.9.5/AnyKernel3-android14-5.15.137_2023-11.zip"
+          fi
+          if [ -z "$KSU_APK_URL" ] || [ "$KSU_APK_URL" == "null" ]; then
+            KSU_APK_URL="https://github.com/tiann/KernelSU/releases/download/v0.9.5/KernelSU_v0.9.5_11270-release.apk"
           fi
           curl -L -o ksu-kernel.zip "$KSU_ZIP_URL"
           
-          # 2. Latest Stable KernelSU-Next GKI Zip & APK URL (With robust fallback)
-          KSUN_RELEASE=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/KernelSU-Next/KernelSU-Next/releases/latest")
-          KSUN_ZIP_URL=$(echo "$KSUN_RELEASE" | jq -r '.assets[] | select(.name | contains("AnyKernel3-android14-5.15")) | .browser_download_url' | head -n 1)
+          # 2. Latest Stable KernelSU-Next GKI Zip & APK URL (From WildKernels project)
+          WILD_RELEASE=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/WildKernels/GKI_KernelSU_SUSFS/releases")
+          KSUN_ZIP_URL=$(echo "$WILD_RELEASE" | jq -r '.[0].assets[] | select(.name | contains("AnyKernel3") and contains("5.15")) | .browser_download_url' | head -n 1)
           
-          KSUN_APK_NORMAL=$(echo "$KSUN_RELEASE" | jq -r '.assets[] | select(.name | contains("release.apk") and (contains("spoofed") | not)) | .browser_download_url' | head -n 1)
-          KSUN_APK_SPOOF=$(echo "$KSUN_RELEASE" | jq -r '.assets[] | select(.name | contains("spoofed") and contains(".apk")) | .browser_download_url' | head -n 1)
+          KSUN_RELEASE=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/KernelSU-Next/KernelSU-Next/releases")
+          KSUN_APK_NORMAL=$(echo "$KSUN_RELEASE" | jq -r '.[0].assets[] | select(.name | contains("release.apk") and (contains("spoofed") | not)) | .browser_download_url' | head -n 1)
+          KSUN_APK_SPOOF=$(echo "$KSUN_RELEASE" | jq -r '.[0].assets[] | select(.name | contains("spoofed") and contains(".apk")) | .browser_download_url' | head -n 1)
           
           if [ -z "$KSUN_ZIP_URL" ] || [ "$KSUN_ZIP_URL" == "null" ]; then
             echo "Warning: Using stable fallback for KernelSU-Next GKI Zip."
-            KSUN_ZIP_URL="https://github.com/KernelSU-Next/KernelSU-Next/releases/download/v3.3.0/AnyKernel3-android14-5.15-kernel-v3.3.0_33214-release.zip"
+            KSUN_ZIP_URL="https://github.com/WildKernels/GKI_KernelSU_SUSFS/releases/download/v5.15.167-SUSFS-v1.5.3/5.15.167-android14-2024-11-AnyKernel3.zip"
           fi
           curl -L -o ksun-kernel.zip "$KSUN_ZIP_URL"
           
-          # 3. Latest Stable SukiSU-Ultra GKI Zip & APK URL
-          SUKI_RELEASE=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/SukiSU-Ultra/SukiSU-Ultra/releases/latest")
-          SUKI_ZIP_URL=$(echo "$SUKI_RELEASE" | jq -r '.assets[] | select(.name | contains("android14-5.15")) | .browser_download_url' | head -n 1)
-          SUKI_APK_URL=$(echo "$SUKI_RELEASE" | jq -r '.assets[] | select(.name | endswith(".apk")) | .browser_download_url' | head -n 1)
-          if [ ! -z "$SUKI_ZIP_URL" ] && [ "$SUKI_ZIP_URL" != "null" ]; then
-            curl -L -o suki-kernel.zip "$SUKI_ZIP_URL"
-          else
-            cp ksu-kernel.zip suki-kernel.zip
+          # 3. Latest Stable SukiSU-Ultra GKI Zip & APK URL (From MiRinFork project)
+          SUKI_RELEASE=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/MiRinFork/GKI_SukiSU_SUSFS/releases")
+          SUKI_ZIP_URL=$(echo "$SUKI_RELEASE" | jq -r '.[0].assets[] | select(.name | contains("AnyKernel3") or contains("suki") or contains("5.15")) | .browser_download_url' | head -n 1)
+          
+          SUKI_MGR_RELEASE=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/SukiSU-Ultra/SukiSU-Ultra/releases")
+          SUKI_APK_URL=$(echo "$SUKI_MGR_RELEASE" | jq -r '.[0].assets[] | select(.name | endswith(".apk")) | .browser_download_url' | head -n 1)
+          
+          if [ -z "$SUKI_ZIP_URL" ] || [ "$SUKI_ZIP_URL" == "null" ]; then
+            echo "Warning: Using stable fallback for SukiSU GKI Zip."
+            SUKI_ZIP_URL="https://github.com/MiRinFork/GKI_SukiSU_SUSFS/releases/download/2025-12-21-03-54-26/AnyKernel3-android14-5.15.185_2025-07.zip"
           fi
+          curl -L -o suki-kernel.zip "$SUKI_ZIP_URL"
           
           # 4. Fetch APatch APK URL
           APA_RELEASE=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/bmax121/APatch/releases/latest")
@@ -213,7 +220,7 @@ jobs:
           FOLK_APK_URL=$(echo "$FOLK_RELEASE" | jq -r '.assets[] | select(.name | endswith(".apk")) | .browser_download_url' | head -n 1)
           
           # Fallbacks
-          if [ -z "$KSU_APK_URL" ] || [ "$KSU_APK_URL" == "null" ]; then KSU_APK_URL="https://github.com/tiann/KernelSU/releases"; fi
+          if [ -z "$KSU_APK_URL" ] || [ "$KSU_APK_URL" == "null" ]; then KSU_APK_URL="https://github.com/tiann/KernelSU/releases/download/v0.9.5/KernelSU_v0.9.5_11270-release.apk"; fi
           if [ -z "$KSUN_APK_NORMAL" ] || [ "$KSUN_APK_NORMAL" == "null" ]; then KSUN_APK_NORMAL="https://github.com/KernelSU-Next/KernelSU-Next/releases"; fi
           if [ -z "$KSUN_APK_SPOOF" ] || [ "$KSUN_APK_SPOOF" == "null" ]; then KSUN_APK_SPOOF="https://github.com/KernelSU-Next/KernelSU-Next/releases"; fi
           if [ -z "$SUKI_APK_URL" ] || [ "$SUKI_APK_URL" == "null" ]; then SUKI_APK_URL="https://github.com/SukiSU-Ultra/SukiSU-Ultra/releases"; fi
@@ -234,7 +241,7 @@ jobs:
           echo -e "\n\n---\n### ℹ️ Build Information:\n- **Nothing OS Build Version Patched:** \`${{ env.NEW_NOTHING }}\`\n\n### 📖 Flashing & Update Guide:\n- For complete step-by-step flashing instructions and safe OTA update methods, please refer to the [Official Guide](https://github.com/${{ github.repository }}/blob/main/GUIDE.md).\n\n### 🛡️ KernelSU Patched Boot Image (GKI Kernel Mode):\n- **File to Flash:** \`KernelSU-boot.img\`\n- **Backup File:** \`stock-boot.img\`\n\n### 📥 Direct Download Link:\n- [Download KernelSU APK]($KSU_APK_URL)" >> desc_ksu.txt
           
           cp base_body.txt desc_ksun.txt
-          echo -e "\n\n---\n### ℹ️ Build Information:\n- **Nothing OS Build Version Patched:** \`${{ env.NEW_NOTHING }}\`\n\n### 📖 Flashing & Update Guide:\n- For complete step-by-step flashing instructions and safe OTA update methods, please refer to the [Official Guide](https://github.com/${{ github.repository }}/blob/main/GUIDE.md).\n\n### 🛡️ KernelSU-Next Patched Boot Image (GKI Kernel Mode):\n- **File to Flash:** \`KernelSU-Next-boot.img\`\n- **Backup File:** \`stock-boot.img\`\n\n### 📥 Direct Download Links:\n- [Download Normal APK]($KSUN_APK_NORMAL)\n- [Download Spoofed APK (SUSFS/Spoof)]($KSUN_APK_SPOOF)" >> desc_ksun.txt
+          echo -e "\n\n---\n### ℹ️ Build Information:\n- **Nothing OS Build Version Patched:** \`${{ env.NEW_NOTHING }}\`\n\n### 📖 Flashing & Update Guide:\n- For complete step-by-step flashing instructions and safe OTA update methods, please refer to the [Official Guide](https://github.com/${{ github.repository }}/blob/main/GUIDE.md).\n\n### 🛡️ KernelSU-Next Patched Boot Image (GKI Kernel Mode):\n- **Files to Flash:** \`KernelSU-Next-boot.img\`\n- **Backup File:** \`stock-boot.img\`\n\n### 📥 Direct Download Links:\n- [Download Normal APK]($KSUN_APK_NORMAL)\n- [Download Spoofed APK (SUSFS/Spoof)]($KSUN_APK_SPOOF)" >> desc_ksun.txt
           
           cp base_body.txt desc_suki.txt
           echo -e "\n\n---\n### ℹ️ Build Information:\n- **Nothing OS Build Version Patched:** \`${{ env.NEW_NOTHING }}\`\n\n### 📖 Flashing & Update Guide:\n- For complete step-by-step flashing instructions and safe OTA update methods, please refer to the [Official Guide](https://github.com/${{ github.repository }}/blob/main/GUIDE.md).\n\n### 🛡️ SukiSU-Ultra Patched Boot Image (GKI Kernel Mode):\n- **File to Flash:** \`SukiSU-Ultra-boot.img\`\n- **Backup File:** \`stock-boot.img\`\n\n### 📥 Direct Download Link:\n- [Download SukiSU-Ultra APK]($SUKI_APK_URL)" >> desc_suki.txt

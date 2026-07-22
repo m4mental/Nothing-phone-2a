@@ -142,19 +142,22 @@ jobs:
             done
           fi
 
-      - name: Set up magiskboot & kptools
+      - name: Set up magiskboot, kptools & ksud
         if: env.ANY_BUILD == 'true'
         run: |
           # 1. Setup magiskboot
           curl -L -o magiskboot "https://github.com/Uevo001/magiskboot-linux/raw/main/x86_64/magiskboot"
           chmod +x magiskboot
           
-          # 2. Setup latest kptools (highly backward compatible, works with all kpimg-android versions)
+          # 2. Setup kptools with robust fallback to 0.12.2
           KP_RELEASE=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/bmax121/KernelPatch/releases/latest")
           KP_TOOLS_URL=$(echo "$KP_RELEASE" | jq -r '.assets[] | select(.name == "kptools-linux") | .browser_download_url' | head -n 1)
+          
           if [ -z "$KP_TOOLS_URL" ] || [ "$KP_TOOLS_URL" == "null" ]; then
+            echo "Warning: Could not fetch kptools-linux dynamically, using fallback."
             KP_TOOLS_URL="https://github.com/bmax121/KernelPatch/releases/download/0.12.2/kptools-linux"
           fi
+          
           curl -L -o kptools-linux "$KP_TOOLS_URL"
           chmod +x kptools-linux
 
@@ -230,11 +233,11 @@ jobs:
           if [ -z "$APA_APK_URL" ] || [ "$APA_APK_URL" == "null" ]; then APA_APK_URL="https://github.com/bmax121/APatch/releases"; fi
           if [ -z "$FOLK_APK_URL" ] || [ "$FOLK_APK_URL" == "null" ]; then FOLK_APK_URL="https://github.com/LyraVoid/FolkPatch/releases"; fi
           
-          # Dynamic extraction of kpimg-android from APatch APK (guarantees 100% version match with the app!)
+          # Dynamic extraction of matching kpimg-android from APatch APK (Guarantees 100% version match!)
           echo "Extracting matching kpimg-android from APatch APK..."
           unzip -o apatch.apk -d apatch_unzipped
           KP_IMG_PATH=$(find apatch_unzipped/ -type f -name "kpimg-android" | head -n 1)
-          if [ ! -z "$KP_IMG_PATH" ]; then
+          if [ ! -z "$KP_IMG_PATH" ] && [ "$KP_IMG_PATH" != "null" ]; then
             cp -f "$KP_IMG_PATH" kpimg-android
             echo "Successfully extracted matching kpimg-android!"
           else
@@ -243,11 +246,11 @@ jobs:
           fi
           rm -rf apatch_unzipped
           
-          # Dynamic extraction of kpimg-android from FolkPatch APK (guarantees 100% version match with the app!)
+          # Dynamic extraction of matching kpimg-android from FolkPatch APK (Guarantees 100% version match!)
           echo "Extracting matching kpimg-android from FolkPatch APK..."
           unzip -o folkpatch.apk -d folk_unzipped
           FOLK_KP_IMG_PATH=$(find folk_unzipped/ -type f -name "kpimg-android" | head -n 1)
-          if [ ! -z "$FOLK_KP_IMG_PATH" ]; then
+          if [ ! -z "$FOLK_KP_IMG_PATH" ] && [ "$FOLK_KP_IMG_PATH" != "null" ]; then
             cp -f "$FOLK_KP_IMG_PATH" folk-kpimg-android
             echo "Successfully extracted matching folk-kpimg-android!"
           else
@@ -427,7 +430,8 @@ jobs:
           URL_APA="https://github.com/${{ github.repository }}/releases/tag/APatch-${{ env.NEW_APA }}"
           URL_FOLK="https://github.com/${{ github.repository }}/releases/tag/FolkPatch-${{ env.NEW_FOLK }}"
           URL_KSU="https://github.com/${{ github.repository }}/releases/tag/KernelSU-${{ env.NEW_KSU }}"
-          URL_KSUN="https://github.com/${{ github.repository }}/releases/tag/KernelSU-Next-${{ env.NEW_KSUN }}"
+          URL_KSUN_NORMAL="https://github.com/${{ github.repository }}/releases/tag/KernelSU-Next-Normal-${{ env.NEW_KSUN }}"
+          URL_KSUN_SPOOF="https://github.com/${{ github.repository }}/releases/tag/KernelSU-Next-Spoof-${{ env.NEW_KSUN }}"
           URL_SUKI="https://github.com/${{ github.repository }}/releases/tag/SukiSU-Ultra-${{ env.NEW_SUKI }}"
           
           # Generate clean README markdown
@@ -455,8 +459,8 @@ jobs:
 
           ### 🔑 Patched Boot Images (APatch & FolkPatch)
           Click below to download patched boot images for APatch and FolkPatch:
-          *   👉 **[Download APatch (${{ env.NEW_APA }}) APK]($URL_APA)**
-          *   👉 **[Download FolkPatch (${{ env.NEW_FOLK }}) APK]($URL_FOLK)**
+          *   👉 **[APatch (${{ env.NEW_APA }}) APK]($URL_APA)**
+          *   👉 **[FolkPatch (${{ env.NEW_FOLK }}) APK]($URL_FOLK)**
 
           ---
 

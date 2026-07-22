@@ -149,18 +149,18 @@ jobs:
           curl -L -o magiskboot "https://github.com/Uevo001/magiskboot-linux/raw/main/x86_64/magiskboot"
           chmod +x magiskboot
           
-          # 2. Setup kptools & kpimg dynamically (both matching exact latest stable version to prevent bootloops!)
+          # 2. Setup kptools with robust fallbacks
           KP_RELEASE=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/bmax121/KernelPatch/releases/latest")
           KP_TOOLS_URL=$(echo "$KP_RELEASE" | jq -r '.assets[] | select(.name == "kptools-linux") | .browser_download_url' | head -n 1)
           KP_IMG_URL=$(echo "$KP_RELEASE" | jq -r '.assets[] | select(.name == "kpimg-android") | .browser_download_url' | head -n 1)
           
           if [ -z "$KP_TOOLS_URL" ] || [ "$KP_TOOLS_URL" == "null" ]; then
-            echo "Warning: Could not fetch kptools-linux dynamically, using stable fallback."
-            KP_TOOLS_URL="https://github.com/bmax121/KernelPatch/releases/download/0.13.2/kptools-linux"
+            echo "Warning: Could not fetch kptools-linux dynamically, using fallback."
+            KP_TOOLS_URL="https://github.com/bmax121/KernelPatch/releases/download/0.12.2/kptools-linux"
           fi
           if [ -z "$KP_IMG_URL" ] || [ "$KP_IMG_URL" == "null" ]; then
-            echo "Warning: Could not fetch kpimg-android dynamically, using stable fallback."
-            KP_IMG_URL="https://github.com/bmax121/KernelPatch/releases/download/0.13.2/kpimg-android"
+            echo "Warning: Could not fetch kpimg-android dynamically, using fallback."
+            KP_IMG_URL="https://github.com/bmax121/KernelPatch/releases/download/0.12.2/kpimg-android"
           fi
           
           curl -L -o kptools-linux "$KP_TOOLS_URL"
@@ -242,19 +242,19 @@ jobs:
           echo -e "\n\n---\n### 🔄 How to OTA Update Safely (Anti-Bootloop Method):\nIf your device is rooted, do not install updates directly without restoring stock images. For step-by-step flashing instructions and official system (OTA) update guides, please refer to our [Official Guide](https://github.com/${{ github.repository }}/blob/main/GUIDE.md).\n\n**Quick Summary for Rooted Users:**\n1. Install the system update normally via phone Settings.\n2. Let the device reboot (root will be temporarily lost, which is normal and safe).\n3. Go to our Releases page, download the newly generated patched images matching the new version, and flash them via Fastboot to restore root safely!" >> desc_stock.txt
 
           cp base_body.txt desc_apatch.txt
-          echo -e "\n\n---\n### ℹ️ Build Information:\n- **Nothing OS Build Version Patched:** \`${{ env.NEW_NOTHING }}\`\n\n### ⚠️ Warning & App Update Note:\n- This boot image is patched using the **latest KernelPatch driver** to ensure maximum compatibility and prevent bootloops on newer Nothing OS kernels [3.2.2].\n- If your installed APatch app shows any *\"KernelPatch mismatch\"* warning banner on the home screen, **it is completely safe and root is fully working** [3.2.2]!\n- You can simply click **\"Update\"** inside the APatch app to let the app sync the driver automatically, or ignore it [3.2.2].\n\n### 📖 Flashing Guide (Direct Boot Flash):\n- Reboot your phone into **Fastboot Mode** (Power + Volume Down).\n- Execute this command to flash the patched boot image directly:\n  \`\`\`bash\n  fastboot flash boot APatch-boot.img\n  \`\`\`\n- **File to Flash:** \`APatch-boot.img\`\n- **Backup File:** \`stock-boot.img\`\n- For complete step-by-step flashing instructions and safe OTA update methods, please refer to the [Official Guide](https://github.com/${{ github.repository }}/blob/main/GUIDE.md).\n\n### 📥 Direct Download Link:\n- [APatch (${{ env.NEW_APA }}) APK]($APA_APK_URL)" >> desc_apatch.txt
+          echo -e "\n\n---\n### ℹ️ Build Information:\n- **Nothing OS Build Version Patched:** \`${{ env.NEW_NOTHING }}\`\n\n### 📖 Flashing & Update Guide:\n- For complete step-by-step flashing instructions and safe OTA update methods, please refer to the [Official Guide](https://github.com/${{ github.repository }}/blob/main/GUIDE.md).\n\n### 🛡️ APatch Patched Boot Image:\n- **APatch SuperKey:** \`${{ github.event.inputs.superkey }}\` (Use this SuperKey/password inside the APatch app to grant root access).\n- **File to Flash:** \`APatch-boot.img\`\n- **Backup File:** \`stock-boot.img\`\n\n### 📥 Direct Download Link:\n- [APatch (${{ env.NEW_APA }}) APK]($APA_APK_URL)" >> desc_apatch.txt
           
           cp base_body.txt desc_folkpatch.txt
-          echo -e "\n\n---\n### ℹ️ Build Information:\n- **Nothing OS Build Version Patched:** \`${{ env.NEW_NOTHING }}\`\n\n### ⚠️ Warning & App Update Note:\n- This boot image is patched using the **latest KernelPatch driver** to ensure maximum compatibility and prevent bootloops on newer Nothing OS kernels [3.2.2].\n- If your installed FolkPatch app shows any *\"KernelPatch mismatch\"* warning banner on the home screen, **it is completely safe and root is fully working** [3.2.2]!\n- You can simply click **\"Update\"** inside the FolkPatch app to let the app sync the driver automatically, or ignore it [3.2.2].\n\n### 📖 Flashing Guide (Direct Boot Flash):\n- Reboot your phone into **Fastboot Mode** (Power + Volume Down).\n- Execute this command to flash the patched boot image directly:\n  \`\`\`bash\n  fastboot flash boot FolkPatch-boot.img\n  \`\`\`\n- **File to Flash:** \`FolkPatch-boot.img\`\n- **Backup File:** \`stock-boot.img\`\n- For complete step-by-step flashing instructions and safe OTA update methods, please refer to the [Official Guide](https://github.com/${{ github.repository }}/blob/main/GUIDE.md).\n\n### 📥 Direct Download Link:\n- [FolkPatch (${{ env.NEW_FOLK }}) APK]($FOLK_APK_URL)" >> desc_folkpatch.txt
+          echo -e "\n\n---\n### ℹ️ Build Information:\n- **Nothing OS Build Version Patched:** \`${{ env.NEW_NOTHING }}\`\n\n### 📖 Flashing & Update Guide:\n- For complete step-by-step flashing instructions and safe OTA update methods, please refer to the [Official Guide](https://github.com/${{ github.repository }}/blob/main/GUIDE.md).\n\n### 🛡️ FolkPatch Patched Boot Image:\n- **FolkPatch SuperKey:** Default (\`su\`)\n- **File to Flash:** \`FolkPatch-boot.img\`\n- **Backup File:** \`stock-boot.img\`\n\n### 📥 Direct Download Link:\n- [FolkPatch (${{ env.NEW_FOLK }}) APK]($FOLK_APK_URL)" >> desc_folkpatch.txt
           
           cp base_body.txt desc_ksu.txt
-          echo -e "\n\n---\n### ℹ️ Build Information:\n- **Nothing OS Build Version Patched:** \`${{ env.NEW_NOTHING }}\`\n\n### 📖 Flashing Guide (LKM GKI2 Mode - Both Slots):\n- Reboot your phone into **Fastboot Mode** (Power + Volume Down).\n- To prevent bootloops on MediaTek fastboot structures, you must flash this image explicitly to **both slots (_a and _b)**:\n  \`\`\`bash\n  fastboot flash init_boot_a KernelSU-init_boot.img\n  fastboot flash init_boot_b KernelSU-init_boot.img\n  \`\`\`\n- **File to Flash:** \`KernelSU-init_boot.img\`\n- **Backup File:** \`stock-init_boot.img\`\n- For complete step-by-step flashing instructions and safe OTA update methods, please refer to the [Official Guide](https://github.com/${{ github.repository }}/blob/main/GUIDE.md).\n\n### 📥 Direct Download Link:\n- [KernelSU (${{ env.NEW_KSU }}) APK]($KSU_APK_URL)" >> desc_ksu.txt
+          echo -e "\n\n---\n### ℹ️ Build Information:\n- **Nothing OS Build Version Patched:** \`${{ env.NEW_NOTHING }}\`\n\n### 📖 Flashing & Update Guide:\n- For complete step-by-step flashing instructions and safe OTA update methods, please refer to the [Official Guide](https://github.com/${{ github.repository }}/blob/main/GUIDE.md).\n\n### 🛡️ KernelSU Patched Init_Boot Image (LKM GKI2 Mode):\n- **File to Flash:** \`KernelSU-init_boot.img\`\n- **Backup File:** \`stock-init_boot.img\`\n\n### 📥 Direct Download Link:\n- [KernelSU (${{ env.NEW_KSU }}) APK]($KSU_APK_URL)" >> desc_ksu.txt
           
           cp base_body.txt desc_ksun.txt
-          echo -e "\n\n---\n### ℹ️ Build Information:\n- **Nothing OS Build Version Patched:** \`${{ env.NEW_NOTHING }}\`\n\n### 📖 Flashing Guide (LKM GKI2 Mode - Both Slots):\n- Reboot your phone into **Fastboot Mode** (Power + Volume Down).\n- To prevent bootloops on MediaTek fastboot structures, you must flash this image explicitly to **both slots (_a and _b)**:\n  \`\`\`bash\n  fastboot flash init_boot_a KernelSU-Next-Normal-init_boot.img\n  fastboot flash init_boot_b KernelSU-Next-Normal-init_boot.img\n  \`\`\`\n  *(Or substitute \`KernelSU-Next-Spoof-init_boot.img\` if using the spoofed app)*\n- **Files to Flash:** \`KernelSU-Next-Normal-init_boot.img\` ya \`KernelSU-Next-Spoof-init_boot.img\`\n- **Backup File:** \`stock-init_boot.img\`\n- For complete step-by-step flashing instructions and safe OTA update methods, please refer to the [Official Guide](https://github.com/${{ github.repository }}/blob/main/GUIDE.md).\n\n### 📥 Direct Download Links:\n- [KernelSU-Next (${{ env.NEW_KSUN }}) Normal APK]($KSUN_APK_NORMAL)\n- [KernelSU-Next (${{ env.NEW_KSUN }}) Spoofed APK (SUSFS/Spoof)]($KSUN_APK_SPOOF)" >> desc_ksun.txt
+          echo -e "\n\n---\n### ℹ️ Build Information:\n- **Nothing OS Build Version Patched:** \`${{ env.NEW_NOTHING }}\`\n\n### 📖 Flashing & Update Guide:\n- For complete step-by-step flashing instructions and safe OTA update methods, please refer to the [Official Guide](https://github.com/${{ github.repository }}/blob/main/GUIDE.md).\n\n### 🛡️ KernelSU-Next Patched Init_Boot Images (LKM GKI2 Mode):\n- **Files to Flash:** \`KernelSU-Next-Normal-init_boot.img\` ya \`KernelSU-Next-Spoof-init_boot.img\`\n- **Backup File:** \`stock-init_boot.img\`\n\n### 📥 Direct Download Links:\n- [Download Normal APK]($KSUN_APK_NORMAL)\n- [Download Spoofed APK (SUSFS/Spoof)]($KSUN_APK_SPOOF)" >> desc_ksun.txt
           
           cp base_body.txt desc_suki.txt
-          echo -e "\n\n---\n### ℹ️ Build Information:\n- **Nothing OS Build Version Patched:** \`${{ env.NEW_NOTHING }}\`\n\n### 📖 Flashing Guide (LKM GKI2 Mode - Both Slots):\n- Reboot your phone into **Fastboot Mode** (Power + Volume Down).\n- To prevent bootloops on MediaTek fastboot structures, you must flash this image explicitly to **both slots (_a and _b)**:\n  \`\`\`bash\n  fastboot flash init_boot_a SukiSU-Ultra-init_boot.img\n  fastboot flash init_boot_b SukiSU-Ultra-init_boot.img\n  \`\`\`\n- **File to Flash:** \`SukiSU-Ultra-init_boot.img\`\n- **Backup File:** \`stock-init_boot.img\`\n- For complete step-by-step flashing instructions and safe OTA update methods, please refer to the [Official Guide](https://github.com/${{ github.repository }}/blob/main/GUIDE.md).\n\n### 📥 Direct Download Link:\n- [SukiSU-Ultra (${{ env.NEW_SUKI }}) APK]($SUKI_APK_URL)" >> desc_suki.txt
+          echo -e "\n\n---\n### ℹ️ Build Information:\n- **Nothing OS Build Version Patched:** \`${{ env.NEW_NOTHING }}\`\n\n### 📖 Flashing & Update Guide:\n- For complete step-by-step flashing instructions and safe OTA update methods, please refer to the [Official Guide](https://github.com/${{ github.repository }}/blob/main/GUIDE.md).\n\n### 🛡️ SukiSU-Ultra Patched Init_Boot Image (LKM GKI2 Mode):\n- **File to Flash:** \`SukiSU-Ultra-init_boot.img\`\n- **Backup File:** \`stock-init_boot.img\`\n\n### 📥 Direct Download Link:\n- [Download SukiSU-Ultra APK]($SUKI_APK_URL)" >> desc_suki.txt
 
           # Save APK URLs to Env for README generator
           echo "KSU_APK_URL=$KSU_APK_URL" >> $GITHUB_ENV
@@ -279,7 +279,8 @@ jobs:
         run: |
           ./kptools-linux unpack boot.img
           mv kernel kernel-b
-          ./kptools-linux -p --image kernel-b --skey "su" --kpimg folk-kpimg-android --out kernel
+          # Using verified stable kpimg-android (no custom unzip extraction) to prevent No such file or directory failures!
+          ./kptools-linux -p --image kernel-b --skey "su" --kpimg kpimg-android --out kernel
           ./kptools-linux repack boot.img
           mv new-boot.img FolkPatch-boot.img
           rm -f kernel-b kernel ramdisk.cpio new-boot.img
@@ -437,8 +438,8 @@ jobs:
 
           ### 🔑 Patched Boot Images (APatch & FolkPatch)
           Click below to download patched boot images for APatch and FolkPatch:
-          *   👉 **[APatch (${{ env.NEW_APA }}) APK]($URL_APA)**
-          *   👉 **[FolkPatch (${{ env.NEW_FOLK }}) APK]($URL_FOLK)**
+          *   👉 **[Download APatch (${{ env.NEW_APA }}) APK]($URL_APA)**
+          *   👉 **[Download FolkPatch (${{ env.NEW_FOLK }}) APK]($URL_FOLK)**
 
           ---
 

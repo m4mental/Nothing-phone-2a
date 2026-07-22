@@ -29,9 +29,9 @@ Click below to download patched boot images for APatch and FolkPatch:
 ### 🧬 Patched Init_Boot Images (KernelSU, KernelSU-Next, SukiSU-Ultra)
 Click below to download patched init_boot images for KernelSU and compatible modules (LKM GKI2 mode):
 *   👉 **[KernelSU (v3.2.5) APK](https://github.com/m4mental/Nothing-phone-2a/releases/tag/KernelSU-v3.2.5)**
-*   👉 **[KernelSU-Next (v3.3.0) Normal APK](https://github.com/m4mental/Nothing-phone-2a/releases/tag/KernelSU-Next-Normal-v3.3.0)**
-*   👉 **[KernelSU-Next (v3.3.0) Spoofed APK (SUSFS/Spoof)](https://github.com/m4mental/Nothing-phone-2a/releases/tag/KernelSU-Next-Spoof-v3.3.0)**
+*   👉 **[KernelSU-Next (v3.3.0) Normal APK]()**
+*   👉 **[KernelSU-Next (v3.3.0) Spoofed APK (SUSFS/Spoof)]()**
 *   👉 **[SukiSU-Ultra (v4.1.3) APK](https://github.com/m4mental/Nothing-phone-2a/releases/tag/SukiSU-Ultra-v4.1.3)**
 
 ---
-*Auto-updated by GitHub Actions. Last check: 22 Jul 2026, 10:31 AM IST*
+*Auto-updated by GitHub Actions. Last check: 22 Jul 2026, 11:02 AM IST*

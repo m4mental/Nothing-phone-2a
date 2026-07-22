@@ -21,16 +21,17 @@ If you want to update your phone with official/original stock images (firmware, 
 
 ### 🔑 Patched Boot Images (APatch & FolkPatch)
 Click below to download patched boot images for APatch and FolkPatch:
-*   👉 **[Download Latest APatch Patched Boot](https://github.com/m4mental/Nothing-phone-2a/releases/tag/APatch-11142)**
-*   👉 **[Download Latest FolkPatch Patched Boot](https://github.com/m4mental/Nothing-phone-2a/releases/tag/FolkPatch-4.3)**
+*   👉 **[Download APatch (11142) APK](https://github.com/m4mental/Nothing-phone-2a/releases/tag/APatch-11142)**
+*   👉 **[Download FolkPatch (4.3) APK](https://github.com/m4mental/Nothing-phone-2a/releases/tag/FolkPatch-4.3)**
 
 ---
 
-### 🧬 Patched Boot Images (KernelSU, KernelSU-Next, SukiSU-Ultra)
-Click below to download patched boot images for KernelSU and compatible modules (GKI kernel replacement mode):
-*   👉 **[Download Latest KernelSU Patched Boot](https://github.com/m4mental/Nothing-phone-2a/releases/tag/KernelSU-v3.2.5)**
-*   👉 **[Download Latest KernelSU-Next Patched Boot](https://github.com/m4mental/Nothing-phone-2a/releases/tag/KernelSU-Next-v3.3.0)**
-*   👉 **[Download Latest SukiSU-Ultra Patched Boot](https://github.com/m4mental/Nothing-phone-2a/releases/tag/SukiSU-Ultra-v4.1.3)**
+### 🧬 Patched Init_Boot Images (KernelSU, KernelSU-Next, SukiSU-Ultra)
+Click below to download patched init_boot images for KernelSU and compatible modules (LKM GKI2 mode):
+*   👉 **[KernelSU (v3.2.5) APK](https://github.com/m4mental/Nothing-phone-2a/releases/tag/KernelSU-v3.2.5)**
+*   👉 **[KernelSU-Next (v3.3.0) Normal APK](https://github.com/m4mental/Nothing-phone-2a/releases/tag/KernelSU-Next-Normal-v3.3.0)**
+*   👉 **[KernelSU-Next (v3.3.0) Spoofed APK (SUSFS/Spoof)](https://github.com/m4mental/Nothing-phone-2a/releases/tag/KernelSU-Next-Spoof-v3.3.0)**
+*   👉 **[SukiSU-Ultra (v4.1.3) APK](https://github.com/m4mental/Nothing-phone-2a/releases/tag/SukiSU-Ultra-v4.1.3)**
 
 ---
-*Auto-updated by GitHub Actions. Last check: 22 Jul 2026, 09:11 AM IST*
+*Auto-updated by GitHub Actions. Last check: 22 Jul 2026, 10:31 AM IST*

@@ -15,7 +15,7 @@ Select the appropriate download for your phone by clicking the links below:
 
 ### 📱 Stock Update (No Root)
 If you want to update your phone with official/original stock images (firmware, logical, boot, etc.) without root, click here:
-*   👉 **[Go to Latest Stock Update Release](https://github.com/m4mental/Nothing-phone-2a/releases/tag/Pacman_B4.1-260609-1925)**
+*   👉 **[Go to Latest Stock Update Release](https://github.com/m4mental/Nothing-phone-2a/releases/tag/Pacman_B4.1-260813-0941)**
 
 ---
 
@@ -27,4 +27,4 @@ Click below to download patched init_boot images for KernelSU and compatible mod
 *   👉 **[SukiSU-Ultra (v4.1.3) APK](https://github.com/m4mental/Nothing-phone-2a/releases/tag/SukiSU-Ultra-v4.1.3)**
 
 ---
-*Auto-updated by GitHub Actions. Last check: 04 Aug 2026, 01:40 PM IST*
+*Auto-updated by GitHub Actions. Last check: 24 Aug 2026, 05:55 PM IST*

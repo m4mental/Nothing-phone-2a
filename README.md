@@ -21,10 +21,10 @@ If you want to update your phone with official/original stock images (firmware, 
 
 ### 🧬 Patched Init_Boot Images (KernelSU, KernelSU-Next, SukiSU-Ultra)
 Click below to download patched init_boot images for KernelSU and compatible modules (LKM GKI2 mode):
-*   👉 **[KernelSU (v3.2.5) APK](https://github.com/m4mental/Nothing-phone-2a/releases/tag/KernelSU-v3.2.5)**
+*   👉 **[KernelSU (v3.3.0) APK](https://github.com/m4mental/Nothing-phone-2a/releases/tag/KernelSU-v3.3.0)**
 *   👉 **[KernelSU-Next (v3.3.0) Normal APK](https://github.com/m4mental/Nothing-phone-2a/releases/tag/KernelSU-Next-Normal-v3.3.0)**
 *   👉 **[KernelSU-Next (v3.3.0) Spoofed APK (SUSFS/Spoof)](https://github.com/m4mental/Nothing-phone-2a/releases/tag/KernelSU-Next-Spoof-v3.3.0)**
 *   👉 **[SukiSU-Ultra (v4.1.3) APK](https://github.com/m4mental/Nothing-phone-2a/releases/tag/SukiSU-Ultra-v4.1.3)**
 
 ---
-*Auto-updated by GitHub Actions. Last check: 24 Aug 2026, 05:55 PM IST*
+*Auto-updated by GitHub Actions. Last check: 29 Aug 2026, 03:04 AM IST*

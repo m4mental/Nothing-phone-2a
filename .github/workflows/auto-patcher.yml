@@ -38,8 +38,8 @@ jobs:
           # 2. Fetch latest versions from official APIs
           REPO="spike0en/nothing_archive"
           CODENAME="Pacman"
-          RELEASES=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/$REPO/releases")
-          RELEASE_JSON=$(echo "$RELEASES" | jq --arg codename "$CODENAME" '[.[] | select(.tag_name | contains($codename))] | .[0]')
+          RELEASES=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/$REPO/releases?per_page=100")
+          RELEASE_JSON=$(echo "$RELEASES" | jq --arg codename "$CODENAME" --arg exclude "${CODENAME}Pro" '[.[] | select((.tag_name | contains($codename)) and (.tag_name | contains($exclude) | not))] | .[0]')
           NEW_NOTHING=$(echo "$RELEASE_JSON" | jq -r '.tag_name')
           
           NEW_KSU=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/tiann/KernelSU/releases/latest" | jq -r '.tag_name')
@@ -99,8 +99,8 @@ jobs:
         run: |
           REPO="spike0en/nothing_archive"
           CODENAME="Pacman"
-          RELEASES=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/$REPO/releases")
-          RELEASE_JSON=$(echo "$RELEASES" | jq --arg codename "$CODENAME" '[.[] | select(.tag_name | contains($codename))] | .[0]')
+          RELEASES=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/$REPO/releases?per_page=100")
+          RELEASE_JSON=$(echo "$RELEASES" | jq --arg codename "$CODENAME" --arg exclude "${CODENAME}Pro" '[.[] | select((.tag_name | contains($codename)) and (.tag_name | contains($exclude) | not))] | .[0]')
           IMAGE_BOOT_URL=$(echo "$RELEASE_JSON" | jq -r '.assets[] | select(.name | contains("image-boot.7z")) | .browser_download_url')
           
           echo "Downloading image-boot.7z..."

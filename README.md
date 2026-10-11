@@ -15,7 +15,7 @@ Select the appropriate download for your phone by clicking the links below:
 
 ### 📱 Stock Update (No Root)
 If you want to update your phone with official/original stock images (firmware, logical, boot, etc.) without root, click here:
-*   👉 **[Go to Latest Stock Update Release](https://github.com/m4mental/Nothing-phone-2a/releases/tag/PacmanPro-B4.1-260928-1201)**
+*   👉 **[Go to Latest Stock Update Release](https://github.com/m4mental/Nothing-phone-2a/releases/tag/Pacman_B4.1-260813-0941)**
 
 ---
 

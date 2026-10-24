@@ -24,7 +24,7 @@ Click below to download patched init_boot images for KernelSU and compatible mod
 *   👉 **[KernelSU (v3.3.1) APK](https://github.com/m4mental/Nothing-phone-2a/releases/tag/KernelSU-v3.3.1)**
 *   👉 **[KernelSU-Next (v3.4.2) Normal APK](https://github.com/m4mental/Nothing-phone-2a/releases/tag/KernelSU-Next-Normal-v3.4.2)**
 *   👉 **[KernelSU-Next (v3.4.2) Spoofed APK (SUSFS/Spoof)](https://github.com/m4mental/Nothing-phone-2a/releases/tag/KernelSU-Next-Spoof-v3.4.2)**
-*   👉 **[SukiSU-Ultra (v4.2.1-r1) APK](https://github.com/m4mental/Nothing-phone-2a/releases/tag/SukiSU-Ultra-v4.2.1-r1)**
+*   👉 **[SukiSU-Ultra (v4.2.1-r2) APK](https://github.com/m4mental/Nothing-phone-2a/releases/tag/SukiSU-Ultra-v4.2.1-r2)**
 
 ---
-*Auto-updated by GitHub Actions. Last check: 23 Oct 2026, 07:48 AM IST*
+*Auto-updated by GitHub Actions. Last check: 24 Oct 2026, 08:29 PM IST*

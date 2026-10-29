@@ -234,33 +234,37 @@ jobs:
         if: env.ANY_BUILD == 'true'
         run: |
           export PATH="$(pwd):$PATH"
-          # Modern ksud boot-patch uses native built-in unpacker (does not take --magiskboot flag)
+          # Modern ksud boot-patch supports direct --out-name and native image unpacking
           
           # 3. KernelSU (Official)
           if [ "${{ env.BUILD_KSU }}" = "true" ]; then
-            ./ksud boot-patch -b "$(pwd)/init_boot.img" -m "$(pwd)/kernelsu-official.ko" --kmi "${{ env.DYNAMIC_KMI }}" -o "$(pwd)"
-            GENERATED_FILE=$(find . -maxdepth 1 -name "kernelsu_patched_*.img" | head -n 1)
-            mv "$GENERATED_FILE" KernelSU-init_boot.img
+            ./ksud boot-patch -b "$(pwd)/init_boot.img" -m "$(pwd)/kernelsu-official.ko" --kmi "${{ env.DYNAMIC_KMI }}" -o "$(pwd)" --out-name KernelSU-init_boot.img
+            GENERATED_FILE=$(find . -maxdepth 1 -name "*patched_*.img" | head -n 1)
+            if [ -n "$GENERATED_FILE" ] && [ ! -f KernelSU-init_boot.img ]; then mv "$GENERATED_FILE" KernelSU-init_boot.img; fi
+            rm -f *patched_*.img
           fi
           
           # 4. KernelSU-Next
           if [ "${{ env.BUILD_KSUN }}" = "true" ]; then
             # Normal Patch
-            ./ksud boot-patch -b "$(pwd)/init_boot.img" -m "$(pwd)/kernelsu-next.ko" --kmi "${{ env.DYNAMIC_KMI }}" -o "$(pwd)"
-            GENERATED_FILE=$(find . -maxdepth 1 -name "kernelsu_patched_*.img" | head -n 1)
-            mv "$GENERATED_FILE" KernelSU-Next-Normal-init_boot.img
+            ./ksud boot-patch -b "$(pwd)/init_boot.img" -m "$(pwd)/kernelsu-next.ko" --kmi "${{ env.DYNAMIC_KMI }}" -o "$(pwd)" --out-name KernelSU-Next-Normal-init_boot.img
+            GENERATED_FILE=$(find . -maxdepth 1 -name "*patched_*.img" | head -n 1)
+            if [ -n "$GENERATED_FILE" ] && [ ! -f KernelSU-Next-Normal-init_boot.img ]; then mv "$GENERATED_FILE" KernelSU-Next-Normal-init_boot.img; fi
+            rm -f *patched_*.img
             
             # Spoof Patch (Uses same stable LKM module, APK randomizes package ID)
-            ./ksud boot-patch -b "$(pwd)/init_boot.img" -m "$(pwd)/kernelsu-next.ko" --kmi "${{ env.DYNAMIC_KMI }}" -o "$(pwd)"
-            GENERATED_FILE=$(find . -maxdepth 1 -name "kernelsu_patched_*.img" | head -n 1)
-            mv "$GENERATED_FILE" KernelSU-Next-Spoof-init_boot.img
+            ./ksud boot-patch -b "$(pwd)/init_boot.img" -m "$(pwd)/kernelsu-next.ko" --kmi "${{ env.DYNAMIC_KMI }}" -o "$(pwd)" --out-name KernelSU-Next-Spoof-init_boot.img
+            GENERATED_FILE=$(find . -maxdepth 1 -name "*patched_*.img" | head -n 1)
+            if [ -n "$GENERATED_FILE" ] && [ ! -f KernelSU-Next-Spoof-init_boot.img ]; then mv "$GENERATED_FILE" KernelSU-Next-Spoof-init_boot.img; fi
+            rm -f *patched_*.img
           fi
           
           # 5. SukiSU-Ultra
           if [ "${{ env.BUILD_SUKI }}" = "true" ]; then
-            ./ksud boot-patch -b "$(pwd)/init_boot.img" -m "$(pwd)/sukisu-ultra.ko" --kmi "${{ env.DYNAMIC_KMI }}" -o "$(pwd)"
-            GENERATED_FILE=$(find . -maxdepth 1 -name "kernelsu_patched_*.img" | head -n 1)
-            mv "$GENERATED_FILE" SukiSU-Ultra-init_boot.img
+            ./ksud boot-patch -b "$(pwd)/init_boot.img" -m "$(pwd)/sukisu-ultra.ko" --kmi "${{ env.DYNAMIC_KMI }}" -o "$(pwd)" --out-name SukiSU-Ultra-init_boot.img
+            GENERATED_FILE=$(find . -maxdepth 1 -name "*patched_*.img" | head -n 1)
+            if [ -n "$GENERATED_FILE" ] && [ ! -f SukiSU-Ultra-init_boot.img ]; then mv "$GENERATED_FILE" SukiSU-Ultra-init_boot.img; fi
+            rm -f *patched_*.img
           fi
 
       # ----------------------------------------------------

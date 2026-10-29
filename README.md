@@ -27,4 +27,4 @@ Click below to download patched init_boot images for KernelSU and compatible mod
 *   👉 **[SukiSU-Ultra (v4.3.0) APK](https://github.com/m4mental/Nothing-phone-2a/releases/tag/SukiSU-Ultra-v4.3.0)**
 
 ---
-*Auto-updated by GitHub Actions. Last check: 29 Oct 2026, 11:12 PM IST*
+*Auto-updated by GitHub Actions. Last check: 30 Oct 2026, 03:19 AM IST*

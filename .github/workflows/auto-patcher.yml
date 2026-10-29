@@ -128,13 +128,15 @@ jobs:
           curl -L -o magiskboot "https://github.com/Uevo001/magiskboot-linux/raw/main/x86_64/magiskboot"
           chmod +x magiskboot
 
-          # 2. Setup official ksud with robust Fede2782/KernelSU stable fallback
-          FEDE_RELEASE=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/Fede2782/KernelSU/releases/latest")
-          KSUD_URL=$(echo "$FEDE_RELEASE" | jq -r '.assets[] | select(.name | contains("ksud-x86_64-unknown-linux-musl")) | .browser_download_url' | head -n 1)
-          
+          # 2. Setup official latest ksud dynamically (musl x86_64)
+          KSUD_RELEASE=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/KernelSU-Next/KernelSU-Next/releases/latest")
+          KSUD_URL=$(echo "$KSUD_RELEASE" | jq -r '.assets[] | select(.name | contains("ksud-x86_64-unknown-linux-musl")) | .browser_download_url' | head -n 1)
           if [ -z "$KSUD_URL" ] || [ "$KSUD_URL" == "null" ]; then
-            echo "Warning: Could not fetch ksud dynamically, using stable fallback."
-            KSUD_URL="https://github.com/Fede2782/KernelSU/releases/download/v1.0.5-legacy3/ksud-x86_64-unknown-linux-musl"
+            KSUD_RELEASE=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/tiann/KernelSU/releases/latest")
+            KSUD_URL=$(echo "$KSUD_RELEASE" | jq -r '.assets[] | select(.name | contains("ksud-x86_64-unknown-linux-musl")) | .browser_download_url' | head -n 1)
+          fi
+          if [ -z "$KSUD_URL" ] || [ "$KSUD_URL" == "null" ]; then
+            KSUD_URL="https://github.com/KernelSU-Next/KernelSU-Next/releases/download/v3.4.2/ksud-x86_64-unknown-linux-musl"
           fi
           
           curl -L -o ksud "$KSUD_URL"
@@ -164,26 +166,22 @@ jobs:
 
           # 1. Official Latest Stable KernelSU Module & APK URL
           KSU_RELEASE=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/tiann/KernelSU/releases/latest")
-          KSU_KO_URL=$(echo "$KSU_RELEASE" | jq -r --arg name_pattern "${EXACT_KMI}_kernelsu.ko" '.assets[] | select(.name == $name_pattern) | .browser_download_url')
+          KSU_KO_URL=$(echo "$KSU_RELEASE" | jq -r --arg kmi "$DYNAMIC_KMI" --arg mm "$KERNEL_MAJOR_MINOR" '.assets[] | select(.name | (contains($kmi) or (contains($mm) and (contains("aarch64") or contains("arm64")))) and (contains("kernelsu") and endswith(".ko")) and (contains("x86") | not) and (contains("guard") | not)) | .browser_download_url' | head -n 1)
           KSU_APK_URL=$(echo "$KSU_RELEASE" | jq -r '.assets[] | select(.name | endswith(".apk")) | .browser_download_url' | head -n 1)
           
           if [ -z "$KSU_KO_URL" ] || [ "$KSU_KO_URL" == "null" ]; then
-            KSU_KO_URL=$(echo "$KSU_RELEASE" | jq -r --arg name_pattern "${ANDROID_VER}-5.15_kernelsu.ko" '.assets[] | select(.name == $name_pattern) | .browser_download_url' | head -n 1)
-          fi
-          if [ -z "$KSU_KO_URL" ] || [ "$KSU_KO_URL" == "null" ]; then
-            KSU_KO_URL="https://github.com/Fede2782/KernelSU/releases/download/v1.0.5-legacy3/${ANDROID_VER}-5.15_kernelsu.ko"
+            echo "Warning: Could not fetch official KernelSU module dynamically, using stable latest fallback."
+            KSU_KO_URL="https://github.com/tiann/KernelSU/releases/download/v3.3.1/lkm-aarch64-android13-5.15_kernelsu.ko"
           fi
           curl -L -o kernelsu-official.ko "$KSU_KO_URL"
           
           # 2. Latest Stable KernelSU-Next (Normal & Spoof)
           KSUN_RELEASE=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/KernelSU-Next/KernelSU-Next/releases/latest")
-          KSUN_KO_URL=$(echo "$KSUN_RELEASE" | jq -r --arg name_pattern "${EXACT_KMI}_kernelsu.ko" '.assets[] | select(.name == $name_pattern) | .browser_download_url')
+          KSUN_KO_URL=$(echo "$KSUN_RELEASE" | jq -r --arg kmi "$DYNAMIC_KMI" --arg mm "$KERNEL_MAJOR_MINOR" '.assets[] | select(.name | (contains($kmi) or (contains($mm) and (contains("aarch64") or contains("arm64")))) and (contains("kernelsu") and endswith(".ko")) and (contains("x86") | not) and (contains("guard") | not)) | .browser_download_url' | head -n 1)
           
           if [ -z "$KSUN_KO_URL" ] || [ "$KSUN_KO_URL" == "null" ]; then
-            KSUN_KO_URL=$(echo "$KSUN_RELEASE" | jq -r --arg name_pattern "${ANDROID_VER}-5.15_kernelsu.ko" '.assets[] | select(.name == $name_pattern) | .browser_download_url' | head -n 1)
-          fi
-          if [ -z "$KSUN_KO_URL" ] || [ "$KSUN_KO_URL" == "null" ]; then
-            KSUN_KO_URL="https://github.com/KernelSU-Next/KernelSU-Next/releases/download/v3.3.0/android13-5.15_kernelsu.ko"
+            echo "Warning: Could not fetch KernelSU-Next module dynamically, using stable latest fallback."
+            KSUN_KO_URL="https://github.com/KernelSU-Next/KernelSU-Next/releases/download/v3.4.2/aarch64_android13-5.15_kernelsu.ko"
           fi
           curl -L -o kernelsu-next.ko "$KSUN_KO_URL"
           
@@ -192,20 +190,20 @@ jobs:
           
           # 3. Latest Stable SukiSU-Ultra Module & APK URL
           SUKI_RELEASE=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/SukiSU-Ultra/SukiSU-Ultra/releases/latest")
-          SUKI_KO_URL=$(echo "$SUKI_RELEASE" | jq -r --arg name_pattern "${EXACT_KMI}_kernelsu.ko" '.assets[] | select(.name == $name_pattern) | .browser_download_url')
-          SUKI_APK_URL=$(echo "$SUKI_RELEASE" | jq -r '.assets[] | select(.name | endswith(".apk")) | .browser_download_url' | head -n 1)
-          
-          if [ -z "$SUKI_KO_URL" ] || [ "$SUKI_KO_URL" == "null" ]; then
-            SUKI_KO_URL=$(echo "$SUKI_RELEASE" | jq -r --arg name_pattern "${ANDROID_VER}-5.15_kernelsu.ko" '.assets[] | select(.name == $name_pattern) | .browser_download_url' | head -n 1)
-          fi
-          if [ -z "$SUKI_KO_URL" ] || [ "$SUKI_KO_URL" == "null" ]; then
-            cp kernelsu-official.ko sukisu-ultra.ko
-          else
-            curl -L -o sukisu-ultra.ko "$SUKI_KO_URL"
+          SUKI_KO_URL=$(echo "$SUKI_RELEASE" | jq -r --arg kmi "$DYNAMIC_KMI" --arg mm "$KERNEL_MAJOR_MINOR" '.assets[] | select(.name | (contains($kmi) or (contains($mm) and (contains("aarch64") or contains("arm64")))) and (contains("kernelsu") and endswith(".ko")) and (contains("x86") | not) and (contains("guard") | not)) | .browser_download_url' | head -n 1)
+          SUKI_APK_URL=$(echo "$SUKI_RELEASE" | jq -r '.assets[] | select(.name | contains("release") and (contains("spoofed") | not) and endswith(".apk")) | .browser_download_url' | head -n 1)
+          if [ -z "$SUKI_APK_URL" ] || [ "$SUKI_APK_URL" == "null" ]; then
+            SUKI_APK_URL=$(echo "$SUKI_RELEASE" | jq -r '.assets[] | select(.name | endswith(".apk")) | .browser_download_url' | head -n 1)
           fi
           
-          # Fallbacks
-          if [ -z "$KSU_APK_URL" ] || [ "$KSU_APK_URL" == "null" ]; then KSU_APK_URL="https://github.com/tiann/KernelSU/releases/download/v2.0.0/KernelSU_v2.0.0_11861-release.apk"; fi
+          if [ -z "$SUKI_KO_URL" ] || [ "$SUKI_KO_URL" == "null" ]; then
+            echo "Warning: Could not fetch SukiSU-Ultra module dynamically, using stable latest fallback."
+            SUKI_KO_URL="https://github.com/SukiSU-Ultra/SukiSU-Ultra/releases/download/v4.3.0/lkm-aarch64-android13-5.15_kernelsu.ko"
+          fi
+          curl -L -o sukisu-ultra.ko "$SUKI_KO_URL"
+          
+          # Fallbacks for APK URLs if missing
+          if [ -z "$KSU_APK_URL" ] || [ "$KSU_APK_URL" == "null" ]; then KSU_APK_URL="https://github.com/tiann/KernelSU/releases/latest"; fi
           if [ -z "$KSUN_APK_NORMAL" ] || [ "$KSUN_APK_NORMAL" == "null" ]; then KSUN_APK_NORMAL="https://github.com/KernelSU-Next/KernelSU-Next/releases"; fi
           if [ -z "$KSUN_APK_SPOOF" ] || [ "$KSUN_APK_SPOOF" == "null" ]; then KSUN_APK_SPOOF="https://github.com/KernelSU-Next/KernelSU-Next/releases"; fi
           if [ -z "$SUKI_APK_URL" ] || [ "$SUKI_APK_URL" == "null" ]; then SUKI_APK_URL="https://github.com/SukiSU-Ultra/SukiSU-Ultra/releases"; fi

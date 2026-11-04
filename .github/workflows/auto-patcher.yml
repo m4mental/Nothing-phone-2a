@@ -3,7 +3,7 @@ name: Root Patch Nothing Phone 2a Partition Images
 on:
   schedule:
     - cron: '0 */12 * * *' # Har 12 ghante mein automatic background mein check karega
-  workflow_dispatch: # Manual ek click par run karne ke liye bhi option rahega
+  workflow_dispatch: # Manual ek click par run karne ke liye option rahega
 
 permissions:
   contents: write # Required to write commits and create releases
@@ -22,107 +22,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y jq curl p7zip-full unzip python3
 
-      - name: Check and Compare Versions
-        id: check_versions
-        run: |
-          # 1. Read existing versions.json or set defaults if not exists
-          if [ ! -f versions.json ]; then
-            echo '{"nothing_tag":"","ksu_version":"","ksun_version":"","sukisu_version":""}' > versions.json
-          fi
-          
-          OLD_NOTHING=$(jq -r '.nothing_tag' versions.json)
-          OLD_KSU=$(jq -r '.ksu_version' versions.json)
-          OLD_KSUN=$(jq -r '.ksun_version' versions.json)
-          OLD_SUKI=$(jq -r '.sukisu_version' versions.json)
-          
-          # 2. Fetch latest versions from official APIs
-          REPO="spike0en/nothing_archive"
-          CODENAME="Pacman"
-          RELEASES=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/$REPO/releases?per_page=100")
-          RELEASE_JSON=$(echo "$RELEASES" | jq --arg codename "$CODENAME" --arg exclude "${CODENAME}Pro" '[.[] | select((.tag_name | contains($codename)) and (.tag_name | contains($exclude) | not))] | .[0]')
-          NEW_NOTHING=$(echo "$RELEASE_JSON" | jq -r '.tag_name')
-          
-          NEW_KSU=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/tiann/KernelSU/releases/latest" | jq -r '.tag_name')
-          NEW_KSUN=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/KernelSU-Next/KernelSU-Next/releases/latest" | jq -r '.tag_name')
-          NEW_SUKI=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/SukiSU-Ultra/SukiSU-Ultra/releases/latest" | jq -r '.tag_name')
-          
-          # 3. Determine what needs to be built
-          BUILD_STOCK=false
-          BUILD_KSU=false
-          BUILD_KSUN=false
-          BUILD_SUKI=false
-          
-          # Check automatic update logic
-          if [ "$NEW_NOTHING" != "$OLD_NOTHING" ]; then
-            echo "Nothing OS update detected! Full rebuild triggered."
-            BUILD_STOCK=true
-            BUILD_KSU=true
-            BUILD_KSUN=true
-            BUILD_SUKI=true
-          else
-            if [ "$NEW_KSU" != "$OLD_KSU" ]; then BUILD_KSU=true; fi
-            if [ "$NEW_KSUN" != "$OLD_KSUN" ]; then BUILD_KSUN=true; fi
-            if [ "$NEW_SUKI" != "$OLD_SUKI" ]; then BUILD_SUKI=true; fi
-          fi
-          
-          # FORCE TRIGGER IF MANUALLY RUN (Crucial for first run/updates)
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "Manual run detected! Force-enabling all builds and README updates."
-            BUILD_STOCK=true
-            BUILD_KSU=true
-            BUILD_KSUN=true
-            BUILD_SUKI=true
-          fi
-          
-          if [ "$BUILD_STOCK" = "true" ] || [ "$BUILD_KSU" = "true" ] || [ "$BUILD_KSUN" = "true" ] || [ "$BUILD_SUKI" = "true" ]; then
-            ANY_BUILD=true
-          else
-            ANY_BUILD=false
-          fi
-          
-          # Export to env
-          echo "ANY_BUILD=$ANY_BUILD" >> $GITHUB_ENV
-          echo "BUILD_STOCK=$BUILD_STOCK" >> $GITHUB_ENV
-          echo "BUILD_KSU=$BUILD_KSU" >> $GITHUB_ENV
-          echo "BUILD_KSUN=$BUILD_KSUN" >> $GITHUB_ENV
-          echo "BUILD_SUKI=$BUILD_SUKI" >> $GITHUB_ENV
-          
-          echo "NEW_NOTHING=$NEW_NOTHING" >> $GITHUB_ENV
-          echo "NEW_KSU=$NEW_KSU" >> $GITHUB_ENV
-          echo "NEW_KSUN=$NEW_KSUN" >> $GITHUB_ENV
-          echo "NEW_SUKI=$NEW_SUKI" >> $GITHUB_ENV
-          
-          echo "$RELEASE_JSON" | jq -r '.body' > base_body.txt
-
-      - name: Download Stock boot and init_boot from image-boot.7z
-        if: env.ANY_BUILD == 'true'
-        run: |
-          REPO="spike0en/nothing_archive"
-          CODENAME="Pacman"
-          RELEASES=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/$REPO/releases?per_page=100")
-          RELEASE_JSON=$(echo "$RELEASES" | jq --arg codename "$CODENAME" --arg exclude "${CODENAME}Pro" '[.[] | select((.tag_name | contains($codename)) and (.tag_name | contains($exclude) | not))] | .[0]')
-          IMAGE_BOOT_URL=$(echo "$RELEASE_JSON" | jq -r '.assets[] | select(.name | contains("image-boot.7z")) | .browser_download_url')
-          
-          echo "Downloading image-boot.7z..."
-          curl -L -o "image-boot.7z" "$IMAGE_BOOT_URL"
-          7z x "image-boot.7z" -o"extracted_temp"
-          find extracted_temp/ -type f -name "boot.img" -exec cp {} . \;
-          find extracted_temp/ -type f -name "init_boot.img" -exec cp {} . \;
-          cp -f boot.img stock-boot.img
-          cp -f init_boot.img stock-init_boot.img
-          rm -rf extracted_temp image-boot.7z
-          
-          if [ "${{ env.BUILD_STOCK }}" = "true" ]; then
-            mkdir -p stock_assets
-            echo "$RELEASE_JSON" | jq -c '.assets[]' | while read -r asset; do
-              ASSET_URL=$(echo "$asset" | jq -r '.browser_download_url')
-              ASSET_NAME=$(echo "$asset" | jq -r '.name')
-              curl -L -o "stock_assets/$ASSET_NAME" "$ASSET_URL"
-            done
-          fi
-
       - name: Set up magiskboot & ksud
-        if: env.ANY_BUILD == 'true'
         run: |
           # 1. Setup magiskboot
           curl -L -o magiskboot "https://github.com/Uevo001/magiskboot-linux/raw/main/x86_64/magiskboot"
@@ -142,215 +42,501 @@ jobs:
           curl -L -o ksud "$KSUD_URL"
           chmod +x ksud
 
-      - name: Fetch Latest Stable GKI Modules and APKs
-        if: env.ANY_BUILD == 'true'
+      - name: Check and Compare Versions (Stable & Open Beta)
+        id: check_versions
         run: |
-          # Setup exact GKI micro-version from stock boot.img
-          ./magiskboot unpack boot.img
+          # 1. Read existing versions.json or set defaults if not exists
+          if [ ! -f versions.json ]; then
+            echo '{"nothing_stable_tag":"","nothing_beta_tag":"","ksu_version":"","ksun_version":"","sukisu_version":""}' > versions.json
+          fi
+          
+          OLD_NOTHING_STABLE=$(jq -r '.nothing_stable_tag // .nothing_tag // ""' versions.json)
+          OLD_NOTHING_BETA=$(jq -r '.nothing_beta_tag // ""' versions.json)
+          OLD_KSU=$(jq -r '.ksu_version // ""' versions.json)
+          OLD_KSUN=$(jq -r '.ksun_version // ""' versions.json)
+          OLD_SUKI=$(jq -r '.sukisu_version // ""' versions.json)
+          
+          # 2. Fetch latest versions from official APIs
+          REPO="spike0en/nothing_archive"
+          CODENAME="Pacman"
+          RELEASES=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/$REPO/releases?per_page=100")
+          
+          # Separate Stable and Open Beta releases cleanly
+          RELEASE_STABLE_JSON=$(echo "$RELEASES" | jq --arg codename "$CODENAME" --arg exclude "${CODENAME}Pro" '[.[] | select((.tag_name | contains($codename)) and (.tag_name | contains($exclude) | not) and (.prerelease | not) and (.tag_name | test("beta"; "i") | not) and ((.name // "") | test("beta"; "i") | not))] | .[0]')
+          NEW_NOTHING_STABLE=$(echo "$RELEASE_STABLE_JSON" | jq -r '.tag_name // empty')
+
+          RELEASE_BETA_JSON=$(echo "$RELEASES" | jq --arg codename "$CODENAME" --arg exclude "${CODENAME}Pro" '[.[] | select((.tag_name | contains($codename)) and (.tag_name | contains($exclude) | not) and ((.prerelease == true) or (.tag_name | test("beta"; "i")) or ((.name // "") | test("beta"; "i"))))] | .[0]')
+          NEW_NOTHING_BETA=$(echo "$RELEASE_BETA_JSON" | jq -r '.tag_name // empty')
+          
+          NEW_KSU=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/tiann/KernelSU/releases/latest" | jq -r '.tag_name')
+          NEW_KSUN=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/KernelSU-Next/KernelSU-Next/releases/latest" | jq -r '.tag_name')
+          NEW_SUKI=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/SukiSU-Ultra/SukiSU-Ultra/releases/latest" | jq -r '.tag_name')
+          
+          echo "Tracked Stable: Old=$OLD_NOTHING_STABLE, New=$NEW_NOTHING_STABLE"
+          echo "Tracked Beta: Old=$OLD_NOTHING_BETA, New=$NEW_NOTHING_BETA"
+          echo "Tracked Managers: KSU=$NEW_KSU, KSUN=$NEW_KSUN, SUKI=$NEW_SUKI"
+
+          # 3. Determine what needs to be built
+          BUILD_STABLE_STOCK=false
+          BUILD_STABLE_PATCH=false
+          BUILD_BETA_STOCK=false
+          BUILD_BETA_PATCH=false
+          
+          # Check Stable update
+          if [ -n "$NEW_NOTHING_STABLE" ] && [ "$NEW_NOTHING_STABLE" != "$OLD_NOTHING_STABLE" ]; then
+            echo "Nothing OS Stable update detected! ($NEW_NOTHING_STABLE)"
+            BUILD_STABLE_STOCK=true
+            BUILD_STABLE_PATCH=true
+          fi
+
+          # Check Beta update
+          if [ -n "$NEW_NOTHING_BETA" ] && [ "$NEW_NOTHING_BETA" != "$OLD_NOTHING_BETA" ]; then
+            echo "Nothing OS Beta update detected! ($NEW_NOTHING_BETA)"
+            BUILD_BETA_STOCK=true
+            BUILD_BETA_PATCH=true
+          fi
+
+          # Check Root Manager updates
+          if [ "$NEW_KSU" != "$OLD_KSU" ] || [ "$NEW_KSUN" != "$OLD_KSUN" ] || [ "$NEW_SUKI" != "$OLD_SUKI" ]; then
+            echo "Root Manager update detected! Rebuilding patches for available channels."
+            if [ -n "$NEW_NOTHING_STABLE" ]; then BUILD_STABLE_PATCH=true; fi
+            if [ -n "$NEW_NOTHING_BETA" ]; then BUILD_BETA_PATCH=true; fi
+          fi
+          
+          # FORCE TRIGGER IF MANUALLY RUN
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "Manual run detected! Force-enabling all builds and README updates."
+            if [ -n "$NEW_NOTHING_STABLE" ]; then
+              BUILD_STABLE_STOCK=true
+              BUILD_STABLE_PATCH=true
+            fi
+            if [ -n "$NEW_NOTHING_BETA" ]; then
+              BUILD_BETA_STOCK=true
+              BUILD_BETA_PATCH=true
+            fi
+          fi
+          
+          if [ "$BUILD_STABLE_STOCK" = "true" ] || [ "$BUILD_STABLE_PATCH" = "true" ] || [ "$BUILD_BETA_STOCK" = "true" ] || [ "$BUILD_BETA_PATCH" = "true" ]; then
+            ANY_BUILD=true
+          else
+            ANY_BUILD=false
+          fi
+          
+          # Export to env
+          echo "ANY_BUILD=$ANY_BUILD" >> $GITHUB_ENV
+          echo "BUILD_STABLE_STOCK=$BUILD_STABLE_STOCK" >> $GITHUB_ENV
+          echo "BUILD_STABLE_PATCH=$BUILD_STABLE_PATCH" >> $GITHUB_ENV
+          echo "BUILD_BETA_STOCK=$BUILD_BETA_STOCK" >> $GITHUB_ENV
+          echo "BUILD_BETA_PATCH=$BUILD_BETA_PATCH" >> $GITHUB_ENV
+          
+          echo "NEW_NOTHING_STABLE=$NEW_NOTHING_STABLE" >> $GITHUB_ENV
+          echo "NEW_NOTHING_BETA=$NEW_NOTHING_BETA" >> $GITHUB_ENV
+          echo "NEW_KSU=$NEW_KSU" >> $GITHUB_ENV
+          echo "NEW_KSUN=$NEW_KSUN" >> $GITHUB_ENV
+          echo "NEW_SUKI=$NEW_SUKI" >> $GITHUB_ENV
+          
+          # Save release JSONs for step processing
+          echo "$RELEASE_STABLE_JSON" > release_stable.json
+          echo "$RELEASE_BETA_JSON" > release_beta.json
+          echo "$RELEASE_STABLE_JSON" | jq -r '.body // ""' > base_body_stable.txt
+          echo "$RELEASE_BETA_JSON" | jq -r '.body // ""' > base_body_beta.txt
+
+      # ----------------------------------------------------
+      # STABLE CHANNEL PROCESSING & PATCHING
+      # ----------------------------------------------------
+      - name: Build & Patch Stable Channel
+        if: env.BUILD_STABLE_STOCK == 'true' || env.BUILD_STABLE_PATCH == 'true'
+        run: |
+          mkdir -p build_stable
+          cd build_stable
+          export PATH="$(pwd)/..:$PATH"
+
+          # 1. Download image-boot.7z from stable release
+          IMAGE_BOOT_URL=$(jq -r '.assets[] | select(.name | contains("image-boot.7z")) | .browser_download_url' ../release_stable.json)
+          echo "Downloading Stable image-boot.7z from $IMAGE_BOOT_URL..."
+          curl -L -o "image-boot.7z" "$IMAGE_BOOT_URL"
+          7z x "image-boot.7z" -o"extracted_temp"
+          find extracted_temp/ -type f -name "boot.img" -exec cp {} . \;
+          find extracted_temp/ -type f -name "init_boot.img" -exec cp {} . \;
+          cp -f boot.img stock-boot.img
+          cp -f init_boot.img stock-init_boot.img
+          rm -rf extracted_temp image-boot.7z
+
+          # Download stock assets if stock update
+          if [ "${{ env.BUILD_STABLE_STOCK }}" = "true" ]; then
+            mkdir -p stock_assets
+            jq -c '.assets[]' ../release_stable.json | while read -r asset; do
+              ASSET_URL=$(echo "$asset" | jq -r '.browser_download_url')
+              ASSET_NAME=$(echo "$asset" | jq -r '.name')
+              curl -L -o "stock_assets/$ASSET_NAME" "$ASSET_URL"
+            done
+          fi
+
+          # 2. Detect Kernel Version & KMI
+          ../magiskboot unpack boot.img
           KERNEL_VERSION_STRING=$(strings kernel | grep -E "Linux version [0-9]+\.[0-9]+\.[0-9]+" | head -n 1)
-          echo "Detected Raw Kernel: $KERNEL_VERSION_STRING"
+          echo "Detected Stable Kernel: $KERNEL_VERSION_STRING"
           KMI_VER=$(echo "$KERNEL_VERSION_STRING" | awk '{print $3}')
           ANDROID_VER=$(echo "$KMI_VER" | grep -o -E "android[0-9]+")
           KERNEL_VER=$(echo "$KMI_VER" | grep -o -E "^[0-9]+\.[0-9]+\.[0-9]+")
-          EXACT_KMI="${ANDROID_VER}-${KERNEL_VER}"
           KERNEL_MAJOR_MINOR=$(echo "$KERNEL_VER" | grep -o -E "^[0-9]+\.[0-9]+")
           DYNAMIC_KMI="${ANDROID_VER}-${KERNEL_MAJOR_MINOR}"
-          
-          if [ -z "$EXACT_KMI" ] || [ "$EXACT_KMI" = "-" ]; then EXACT_KMI="android13-5.15"; fi
           if [ -z "$DYNAMIC_KMI" ] || [ "$DYNAMIC_KMI" = "-" ]; then DYNAMIC_KMI="android13-5.15"; fi
-          
-          echo "EXACT_KMI=$EXACT_KMI" >> $GITHUB_ENV
-          echo "DYNAMIC_KMI=$DYNAMIC_KMI" >> $GITHUB_ENV
-          echo "ANDROID_VER=$ANDROID_VER" >> $GITHUB_ENV
-          ./magiskboot cleanup
+          if [ -z "$KERNEL_MAJOR_MINOR" ]; then KERNEL_MAJOR_MINOR="5.15"; fi
+          echo "Stable KMI: $DYNAMIC_KMI ($KERNEL_MAJOR_MINOR)"
+          ../magiskboot cleanup
 
-          # 1. Official Latest Stable KernelSU Module & APK URL
+          # 3. Fetch LKM modules for Stable kernel
+          # KSU
           KSU_RELEASE=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/tiann/KernelSU/releases/latest")
           KSU_KO_URL=$(echo "$KSU_RELEASE" | jq -r --arg kmi "$DYNAMIC_KMI" --arg mm "$KERNEL_MAJOR_MINOR" '.assets[] | select(.name | (contains($kmi) or (contains($mm) and (contains("aarch64") or contains("arm64")))) and (contains("kernelsu") and endswith(".ko")) and (contains("x86") | not) and (contains("guard") | not)) | .browser_download_url' | head -n 1)
           KSU_APK_URL=$(echo "$KSU_RELEASE" | jq -r '.assets[] | select(.name | endswith(".apk")) | .browser_download_url' | head -n 1)
-          
           if [ -z "$KSU_KO_URL" ] || [ "$KSU_KO_URL" == "null" ]; then
-            echo "Warning: Could not fetch official KernelSU module dynamically, using stable latest fallback."
             KSU_KO_URL="https://github.com/tiann/KernelSU/releases/download/v3.3.1/lkm-aarch64-android13-5.15_kernelsu.ko"
           fi
           curl -L -o kernelsu-official.ko "$KSU_KO_URL"
-          
-          # 2. Latest Stable KernelSU-Next (Normal & Spoof)
+
+          # KSUN
           KSUN_RELEASE=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/KernelSU-Next/KernelSU-Next/releases/latest")
           KSUN_KO_URL=$(echo "$KSUN_RELEASE" | jq -r --arg kmi "$DYNAMIC_KMI" --arg mm "$KERNEL_MAJOR_MINOR" '.assets[] | select(.name | (contains($kmi) or (contains($mm) and (contains("aarch64") or contains("arm64")))) and (contains("kernelsu") and endswith(".ko")) and (contains("x86") | not) and (contains("guard") | not)) | .browser_download_url' | head -n 1)
-          
+          KSUN_APK_NORMAL=$(echo "$KSUN_RELEASE" | jq -r '.assets[] | select(.name | contains("release.apk") and (contains("spoofed") | not)) | .browser_download_url' | head -n 1)
+          KSUN_APK_SPOOF=$(echo "$KSUN_RELEASE" | jq -r '.assets[] | select(.name | contains("spoofed") and contains(".apk")) | .browser_download_url' | head -n 1)
           if [ -z "$KSUN_KO_URL" ] || [ "$KSUN_KO_URL" == "null" ]; then
-            echo "Warning: Could not fetch KernelSU-Next module dynamically, using stable latest fallback."
             KSUN_KO_URL="https://github.com/KernelSU-Next/KernelSU-Next/releases/download/v3.4.2/aarch64_android13-5.15_kernelsu.ko"
           fi
           curl -L -o kernelsu-next.ko "$KSUN_KO_URL"
-          
-          KSUN_APK_NORMAL=$(echo "$KSUN_RELEASE" | jq -r '.assets[] | select(.name | contains("release.apk") and (contains("spoofed") | not)) | .browser_download_url' | head -n 1)
-          KSUN_APK_SPOOF=$(echo "$KSUN_RELEASE" | jq -r '.assets[] | select(.name | contains("spoofed") and contains(".apk")) | .browser_download_url' | head -n 1)
-          
-          # 3. Latest Stable SukiSU-Ultra Module & APK URL
+
+          # SukiSU
           SUKI_RELEASE=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/SukiSU-Ultra/SukiSU-Ultra/releases/latest")
           SUKI_KO_URL=$(echo "$SUKI_RELEASE" | jq -r --arg kmi "$DYNAMIC_KMI" --arg mm "$KERNEL_MAJOR_MINOR" '.assets[] | select(.name | (contains($kmi) or (contains($mm) and (contains("aarch64") or contains("arm64")))) and (contains("kernelsu") and endswith(".ko")) and (contains("x86") | not) and (contains("guard") | not)) | .browser_download_url' | head -n 1)
           SUKI_APK_URL=$(echo "$SUKI_RELEASE" | jq -r '.assets[] | select(.name | contains("release") and (contains("spoofed") | not) and endswith(".apk")) | .browser_download_url' | head -n 1)
           if [ -z "$SUKI_APK_URL" ] || [ "$SUKI_APK_URL" == "null" ]; then
             SUKI_APK_URL=$(echo "$SUKI_RELEASE" | jq -r '.assets[] | select(.name | endswith(".apk")) | .browser_download_url' | head -n 1)
           fi
-          
           if [ -z "$SUKI_KO_URL" ] || [ "$SUKI_KO_URL" == "null" ]; then
-            echo "Warning: Could not fetch SukiSU-Ultra module dynamically, using stable latest fallback."
             SUKI_KO_URL="https://github.com/SukiSU-Ultra/SukiSU-Ultra/releases/download/v4.3.0/lkm-aarch64-android13-5.15_kernelsu.ko"
           fi
           curl -L -o sukisu-ultra.ko "$SUKI_KO_URL"
-          
-          # Fallbacks for APK URLs if missing
-          if [ -z "$KSU_APK_URL" ] || [ "$KSU_APK_URL" == "null" ]; then KSU_APK_URL="https://github.com/tiann/KernelSU/releases/latest"; fi
-          if [ -z "$KSUN_APK_NORMAL" ] || [ "$KSUN_APK_NORMAL" == "null" ]; then KSUN_APK_NORMAL="https://github.com/KernelSU-Next/KernelSU-Next/releases"; fi
-          if [ -z "$KSUN_APK_SPOOF" ] || [ "$KSUN_APK_SPOOF" == "null" ]; then KSUN_APK_SPOOF="https://github.com/KernelSU-Next/KernelSU-Next/releases"; fi
-          if [ -z "$SUKI_APK_URL" ] || [ "$SUKI_APK_URL" == "null" ]; then SUKI_APK_URL="https://github.com/SukiSU-Ultra/SukiSU-Ultra/releases"; fi
-          
-          # Create description files
-          cp base_body.txt desc_stock.txt
+
+          # 4. Patch init_boot.img with ksud for Stable
+          # KSU
+          ../ksud boot-patch -b "$(pwd)/init_boot.img" -m "$(pwd)/kernelsu-official.ko" --kmi "$DYNAMIC_KMI" -o "$(pwd)" --out-name KernelSU-init_boot.img
+          GENERATED_FILE=$(find . -maxdepth 1 -name "*patched_*.img" | head -n 1)
+          if [ -n "$GENERATED_FILE" ] && [ ! -f KernelSU-init_boot.img ]; then mv "$GENERATED_FILE" KernelSU-init_boot.img; fi
+          rm -f *patched_*.img
+
+          # KSUN Normal
+          ../ksud boot-patch -b "$(pwd)/init_boot.img" -m "$(pwd)/kernelsu-next.ko" --kmi "$DYNAMIC_KMI" -o "$(pwd)" --out-name KernelSU-Next-Normal-init_boot.img
+          GENERATED_FILE=$(find . -maxdepth 1 -name "*patched_*.img" | head -n 1)
+          if [ -n "$GENERATED_FILE" ] && [ ! -f KernelSU-Next-Normal-init_boot.img ]; then mv "$GENERATED_FILE" KernelSU-Next-Normal-init_boot.img; fi
+          rm -f *patched_*.img
+
+          # KSUN Spoof
+          ../ksud boot-patch -b "$(pwd)/init_boot.img" -m "$(pwd)/kernelsu-next.ko" --kmi "$DYNAMIC_KMI" -o "$(pwd)" --out-name KernelSU-Next-Spoof-init_boot.img
+          GENERATED_FILE=$(find . -maxdepth 1 -name "*patched_*.img" | head -n 1)
+          if [ -n "$GENERATED_FILE" ] && [ ! -f KernelSU-Next-Spoof-init_boot.img ]; then mv "$GENERATED_FILE" KernelSU-Next-Spoof-init_boot.img; fi
+          rm -f *patched_*.img
+
+          # SukiSU
+          ../ksud boot-patch -b "$(pwd)/init_boot.img" -m "$(pwd)/sukisu-ultra.ko" --kmi "$DYNAMIC_KMI" -o "$(pwd)" --out-name SukiSU-Ultra-init_boot.img
+          GENERATED_FILE=$(find . -maxdepth 1 -name "*patched_*.img" | head -n 1)
+          if [ -n "$GENERATED_FILE" ] && [ ! -f SukiSU-Ultra-init_boot.img ]; then mv "$GENERATED_FILE" SukiSU-Ultra-init_boot.img; fi
+          rm -f *patched_*.img
+
+          # 5. Build Descriptions for Stable
+          cp ../base_body_stable.txt desc_stock.txt
           echo -e "\n\n---\n### 🔄 How to OTA Update Safely (Anti-Bootloop Method):\nIf your device is rooted, do not install updates directly without restoring stock images. For step-by-step flashing instructions and official system (OTA) update guides, please refer to our [Official Guide](https://github.com/${{ github.repository }}/blob/main/GUIDE.md).\n\n**Quick Summary for Rooted Users:**\n1. Install the system update normally via phone Settings.\n2. Let the device reboot (root will be temporarily lost, which is normal and safe).\n3. Go to our Releases page, download the newly generated patched images matching the new version, and flash them via Fastboot to restore root safely!" >> desc_stock.txt
 
-          cp base_body.txt desc_ksu.txt
-          echo -e "\n\n---\n### ℹ️ Build Information:\n- **Nothing OS Build Version Patched:** \`${{ env.NEW_NOTHING }}\`\n\n### 📖 Flashing Guide (LKM GKI2 Mode - Both Slots):\n- Connect your phone in **Fastboot Mode** (Power + Volume Down).\n- Flash this patched \`init_boot\` image explicitly to **both slot A and slot B**:\n  \`\`\`bash\n  fastboot flash init_boot_a KernelSU-init_boot.img\n  fastboot flash init_boot_b KernelSU-init_boot.img\n  fastboot reboot\n  \`\`\`\n- **File to Flash:** \`KernelSU-init_boot.img\`\n- **Backup File:** \`stock-init_boot.img\`\n- For complete step-by-step flashing instructions and safe OTA update methods, please refer to the [Official Guide](https://github.com/${{ github.repository }}/blob/main/GUIDE.md).\n\n### 📥 Direct Download Link:\n- [KernelSU (${{ env.NEW_KSU }}) APK]($KSU_APK_URL)" >> desc_ksu.txt
-          
-          cp base_body.txt desc_ksun_normal.txt
-          echo -e "\n\n---\n### ℹ️ Build Information:\n- **Nothing OS Build Version Patched:** \`${{ env.NEW_NOTHING }}\`\n\n### 📖 Flashing Guide (LKM GKI2 Mode - Both Slots):\n- Connect your phone in **Fastboot Mode** (Power + Volume Down).\n- Flash this patched \`init_boot\` image explicitly to **both slot A and slot B**:\n  \`\`\`bash\n  fastboot flash init_boot_a KernelSU-Next-Normal-init_boot.img\n  fastboot flash init_boot_b KernelSU-Next-Normal-init_boot.img\n  fastboot reboot\n  \`\`\`\n- **File to Flash:** \`KernelSU-Next-Normal-init_boot.img\`\n- **Backup File:** \`stock-init_boot.img\`\n- For complete step-by-step flashing instructions and safe OTA update methods, please refer to the [Official Guide](https://github.com/${{ github.repository }}/blob/main/GUIDE.md).\n\n### 📥 Direct Download Link:\n- [KernelSU-Next (${{ env.NEW_KSUN }}) Normal APK]($KSUN_APK_NORMAL)" >> desc_ksun_normal.txt
+          echo -e "### ℹ️ Build Information:\n- **Channel:** 🟢 Stable\n- **Nothing OS Build Version Patched:** \`${{ env.NEW_NOTHING_STABLE }}\`\n\n### 📖 Flashing Guide (LKM GKI2 Mode - Both Slots):\n- Connect your phone in **Fastboot Mode** (Power + Volume Down).\n- Flash this patched \`init_boot\` image explicitly to **both slot A and slot B**:\n  \`\`\`bash\n  fastboot flash init_boot_a KernelSU-init_boot.img\n  fastboot flash init_boot_b KernelSU-init_boot.img\n  fastboot reboot\n  \`\`\`\n- **File to Flash:** \`KernelSU-init_boot.img\`\n- **Backup File:** \`stock-init_boot.img\`\n- For complete step-by-step flashing instructions, refer to the [Official Guide](https://github.com/${{ github.repository }}/blob/main/GUIDE.md).\n\n### 📥 Direct Download Link:\n- [KernelSU (${{ env.NEW_KSU }}) APK]($KSU_APK_URL)" > desc_ksu.txt
 
-          cp base_body.txt desc_ksun_spoof.txt
-          echo -e "\n\n---\n### ℹ️ Build Information:\n- **Nothing OS Build Version Patched:** \`${{ env.NEW_NOTHING }}\`\n\n### 📖 Flashing Guide (LKM GKI2 Mode - Both Slots):\n- Connect your phone in **Fastboot Mode** (Power + Volume Down).\n- Flash this patched \`init_boot\` image explicitly to **both slot A and slot B**:\n  \`\`\`bash\n  fastboot flash init_boot_a KernelSU-Next-Spoof-init_boot.img\n  fastboot flash init_boot_b KernelSU-Next-Spoof-init_boot.img\n  fastboot reboot\n  \`\`\`\n- **File to Flash:** \`KernelSU-Next-Spoof-init_boot.img\`\n- **Backup File:** \`stock-init_boot.img\`\n- For complete step-by-step flashing instructions and safe OTA update methods, please refer to the [Official Guide](https://github.com/${{ github.repository }}/blob/main/GUIDE.md).\n\n### 📥 Direct Download Link:\n- [KernelSU-Next (${{ env.NEW_KSUN }}) Spoofed APK (SUSFS/Spoof)]($KSUN_APK_SPOOF)" >> desc_ksun_spoof.txt
-          
-          cp base_body.txt desc_suki.txt
-          echo -e "\n\n---\n### ℹ️ Build Information:\n- **Nothing OS Build Version Patched:** \`${{ env.NEW_NOTHING }}\`\n\n### 📖 Flashing Guide (LKM GKI2 Mode - Both Slots):\n- Connect your phone in **Fastboot Mode** (Power + Volume Down).\n- Flash this patched \`init_boot\` image explicitly to **both slot A and slot B**:\n  \`\`\`bash\n  fastboot flash init_boot_a SukiSU-Ultra-init_boot.img\n  fastboot flash init_boot_b SukiSU-Ultra-init_boot.img\n  fastboot reboot\n  \`\`\`\n- **File to Flash:** \`SukiSU-Ultra-init_boot.img\`\n- **Backup File:** \`stock-init_boot.img\`\n- For complete step-by-step flashing instructions and safe OTA update methods, please refer to the [Official Guide](https://github.com/${{ github.repository }}/blob/main/GUIDE.md).\n\n### 📥 Direct Download Link:\n- [SukiSU-Ultra (${{ env.NEW_SUKI }}) APK]($SUKI_APK_URL)" >> desc_suki.txt
+          echo -e "### ℹ️ Build Information:\n- **Channel:** 🟢 Stable\n- **Nothing OS Build Version Patched:** \`${{ env.NEW_NOTHING_STABLE }}\`\n\n### 📖 Flashing Guide (LKM GKI2 Mode - Both Slots):\n- Connect your phone in **Fastboot Mode** (Power + Volume Down).\n- Flash this patched \`init_boot\` image explicitly to **both slot A and slot B**:\n  \`\`\`bash\n  fastboot flash init_boot_a KernelSU-Next-Normal-init_boot.img\n  fastboot flash init_boot_b KernelSU-Next-Normal-init_boot.img\n  fastboot reboot\n  \`\`\`\n- **File to Flash:** \`KernelSU-Next-Normal-init_boot.img\`\n- **Backup File:** \`stock-init_boot.img\`\n- For complete step-by-step flashing instructions, refer to the [Official Guide](https://github.com/${{ github.repository }}/blob/main/GUIDE.md).\n\n### 📥 Direct Download Link:\n- [KernelSU-Next (${{ env.NEW_KSUN }}) Normal APK]($KSUN_APK_NORMAL)" > desc_ksun_normal.txt
 
-          # Save APK URLs to Env for README generator
-          echo "KSU_APK_URL=$KSU_APK_URL" >> $GITHUB_ENV
-          echo "KSUN_APK_NORMAL=$KSUN_APK_NORMAL" >> $GITHUB_ENV
-          echo "KSUN_APK_SPOOF=$KSUN_APK_SPOOF" >> $GITHUB_ENV
-          echo "SUKI_APK_URL=$SUKI_APK_URL" >> $GITHUB_ENV
+          echo -e "### ℹ️ Build Information:\n- **Channel:** 🟢 Stable\n- **Nothing OS Build Version Patched:** \`${{ env.NEW_NOTHING_STABLE }}\`\n\n### 📖 Flashing Guide (LKM GKI2 Mode - Both Slots):\n- Connect your phone in **Fastboot Mode** (Power + Volume Down).\n- Flash this patched \`init_boot\` image explicitly to **both slot A and slot B**:\n  \`\`\`bash\n  fastboot flash init_boot_a KernelSU-Next-Spoof-init_boot.img\n  fastboot flash init_boot_b KernelSU-Next-Spoof-init_boot.img\n  fastboot reboot\n  \`\`\`\n- **File to Flash:** \`KernelSU-Next-Spoof-init_boot.img\`\n- **Backup File:** \`stock-init_boot.img\`\n- For complete step-by-step flashing instructions, refer to the [Official Guide](https://github.com/${{ github.repository }}/blob/main/GUIDE.md).\n\n### 📥 Direct Download Link:\n- [KernelSU-Next (${{ env.NEW_KSUN }}) Spoofed APK (SUSFS/Spoof)]($KSUN_APK_SPOOF)" > desc_ksun_spoof.txt
 
-      - name: Patch init_boot.img via ksud Boot-Patch (KernelSU, KernelSU-Next, SukiSU-Ultra)
-        if: env.ANY_BUILD == 'true'
+          echo -e "### ℹ️ Build Information:\n- **Channel:** 🟢 Stable\n- **Nothing OS Build Version Patched:** \`${{ env.NEW_NOTHING_STABLE }}\`\n\n### 📖 Flashing Guide (LKM GKI2 Mode - Both Slots):\n- Connect your phone in **Fastboot Mode** (Power + Volume Down).\n- Flash this patched \`init_boot\` image explicitly to **both slot A and slot B**:\n  \`\`\`bash\n  fastboot flash init_boot_a SukiSU-Ultra-init_boot.img\n  fastboot flash init_boot_b SukiSU-Ultra-init_boot.img\n  fastboot reboot\n  \`\`\`\n- **File to Flash:** \`SukiSU-Ultra-init_boot.img\`\n- **Backup File:** \`stock-init_boot.img\`\n- For complete step-by-step flashing instructions, refer to the [Official Guide](https://github.com/${{ github.repository }}/blob/main/GUIDE.md).\n\n### 📥 Direct Download Link:\n- [SukiSU-Ultra (${{ env.NEW_SUKI }}) APK]($SUKI_APK_URL)" > desc_suki.txt
+
+      # ----------------------------------------------------
+      # BETA CHANNEL PROCESSING & PATCHING
+      # ----------------------------------------------------
+      - name: Build & Patch Open Beta Channel
+        if: (env.BUILD_BETA_STOCK == 'true' || env.BUILD_BETA_PATCH == 'true') && env.NEW_NOTHING_BETA != ''
         run: |
-          export PATH="$(pwd):$PATH"
-          # Modern ksud boot-patch supports direct --out-name and native image unpacking
-          
-          # 3. KernelSU (Official)
-          if [ "${{ env.BUILD_KSU }}" = "true" ]; then
-            ./ksud boot-patch -b "$(pwd)/init_boot.img" -m "$(pwd)/kernelsu-official.ko" --kmi "${{ env.DYNAMIC_KMI }}" -o "$(pwd)" --out-name KernelSU-init_boot.img
-            GENERATED_FILE=$(find . -maxdepth 1 -name "*patched_*.img" | head -n 1)
-            if [ -n "$GENERATED_FILE" ] && [ ! -f KernelSU-init_boot.img ]; then mv "$GENERATED_FILE" KernelSU-init_boot.img; fi
-            rm -f *patched_*.img
-          fi
-          
-          # 4. KernelSU-Next
-          if [ "${{ env.BUILD_KSUN }}" = "true" ]; then
-            # Normal Patch
-            ./ksud boot-patch -b "$(pwd)/init_boot.img" -m "$(pwd)/kernelsu-next.ko" --kmi "${{ env.DYNAMIC_KMI }}" -o "$(pwd)" --out-name KernelSU-Next-Normal-init_boot.img
-            GENERATED_FILE=$(find . -maxdepth 1 -name "*patched_*.img" | head -n 1)
-            if [ -n "$GENERATED_FILE" ] && [ ! -f KernelSU-Next-Normal-init_boot.img ]; then mv "$GENERATED_FILE" KernelSU-Next-Normal-init_boot.img; fi
-            rm -f *patched_*.img
-            
-            # Spoof Patch (Uses same stable LKM module, APK randomizes package ID)
-            ./ksud boot-patch -b "$(pwd)/init_boot.img" -m "$(pwd)/kernelsu-next.ko" --kmi "${{ env.DYNAMIC_KMI }}" -o "$(pwd)" --out-name KernelSU-Next-Spoof-init_boot.img
-            GENERATED_FILE=$(find . -maxdepth 1 -name "*patched_*.img" | head -n 1)
-            if [ -n "$GENERATED_FILE" ] && [ ! -f KernelSU-Next-Spoof-init_boot.img ]; then mv "$GENERATED_FILE" KernelSU-Next-Spoof-init_boot.img; fi
-            rm -f *patched_*.img
-          fi
-          
-          # 5. SukiSU-Ultra
-          if [ "${{ env.BUILD_SUKI }}" = "true" ]; then
-            ./ksud boot-patch -b "$(pwd)/init_boot.img" -m "$(pwd)/sukisu-ultra.ko" --kmi "${{ env.DYNAMIC_KMI }}" -o "$(pwd)" --out-name SukiSU-Ultra-init_boot.img
-            GENERATED_FILE=$(find . -maxdepth 1 -name "*patched_*.img" | head -n 1)
-            if [ -n "$GENERATED_FILE" ] && [ ! -f SukiSU-Ultra-init_boot.img ]; then mv "$GENERATED_FILE" SukiSU-Ultra-init_boot.img; fi
-            rm -f *patched_*.img
+          mkdir -p build_beta
+          cd build_beta
+          export PATH="$(pwd)/..:$PATH"
+
+          # 1. Download image-boot.7z from beta release
+          IMAGE_BOOT_URL=$(jq -r '.assets[] | select(.name | contains("image-boot.7z")) | .browser_download_url' ../release_beta.json)
+          echo "Downloading Beta image-boot.7z from $IMAGE_BOOT_URL..."
+          curl -L -o "image-boot.7z" "$IMAGE_BOOT_URL"
+          7z x "image-boot.7z" -o"extracted_temp"
+          find extracted_temp/ -type f -name "boot.img" -exec cp {} . \;
+          find extracted_temp/ -type f -name "init_boot.img" -exec cp {} . \;
+          cp -f boot.img stock-beta-boot.img
+          cp -f init_boot.img stock-beta-init_boot.img
+          rm -rf extracted_temp image-boot.7z
+
+          # Download stock beta assets if beta stock update
+          if [ "${{ env.BUILD_BETA_STOCK }}" = "true" ]; then
+            mkdir -p stock_beta_assets
+            jq -c '.assets[]' ../release_beta.json | while read -r asset; do
+              ASSET_URL=$(echo "$asset" | jq -r '.browser_download_url')
+              ASSET_NAME=$(echo "$asset" | jq -r '.name')
+              curl -L -o "stock_beta_assets/$ASSET_NAME" "$ASSET_URL"
+            done
           fi
 
+          # 2. Detect Beta Kernel Version & KMI
+          ../magiskboot unpack boot.img
+          KERNEL_VERSION_STRING=$(strings kernel | grep -E "Linux version [0-9]+\.[0-9]+\.[0-9]+" | head -n 1)
+          echo "Detected Beta Kernel: $KERNEL_VERSION_STRING"
+          KMI_VER=$(echo "$KERNEL_VERSION_STRING" | awk '{print $3}')
+          ANDROID_VER=$(echo "$KMI_VER" | grep -o -E "android[0-9]+")
+          KERNEL_VER=$(echo "$KMI_VER" | grep -o -E "^[0-9]+\.[0-9]+\.[0-9]+")
+          KERNEL_MAJOR_MINOR=$(echo "$KERNEL_VER" | grep -o -E "^[0-9]+\.[0-9]+")
+          DYNAMIC_KMI="${ANDROID_VER}-${KERNEL_MAJOR_MINOR}"
+          if [ -z "$DYNAMIC_KMI" ] || [ "$DYNAMIC_KMI" = "-" ]; then DYNAMIC_KMI="android17-6.18"; fi
+          if [ -z "$KERNEL_MAJOR_MINOR" ]; then KERNEL_MAJOR_MINOR="6.18"; fi
+          echo "Beta KMI: $DYNAMIC_KMI ($KERNEL_MAJOR_MINOR)"
+          ../magiskboot cleanup
+
+          # 3. Fetch LKM modules for Beta kernel
+          # KSU
+          KSU_RELEASE=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/tiann/KernelSU/releases/latest")
+          KSU_KO_URL=$(echo "$KSU_RELEASE" | jq -r --arg kmi "$DYNAMIC_KMI" --arg mm "$KERNEL_MAJOR_MINOR" '.assets[] | select(.name | (contains($kmi) or (contains($mm) and (contains("aarch64") or contains("arm64")))) and (contains("kernelsu") and endswith(".ko")) and (contains("x86") | not) and (contains("guard") | not)) | .browser_download_url' | head -n 1)
+          KSU_APK_URL=$(echo "$KSU_RELEASE" | jq -r '.assets[] | select(.name | endswith(".apk")) | .browser_download_url' | head -n 1)
+          if [ -z "$KSU_KO_URL" ] || [ "$KSU_KO_URL" == "null" ]; then
+            KSU_KO_URL="https://github.com/tiann/KernelSU/releases/download/v3.3.1/lkm-aarch64-android17-6.18_kernelsu.ko"
+          fi
+          curl -L -o kernelsu-official.ko "$KSU_KO_URL"
+
+          # KSUN
+          KSUN_RELEASE=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/KernelSU-Next/KernelSU-Next/releases/latest")
+          KSUN_KO_URL=$(echo "$KSUN_RELEASE" | jq -r --arg kmi "$DYNAMIC_KMI" --arg mm "$KERNEL_MAJOR_MINOR" '.assets[] | select(.name | (contains($kmi) or (contains($mm) and (contains("aarch64") or contains("arm64")))) and (contains("kernelsu") and endswith(".ko")) and (contains("x86") | not) and (contains("guard") | not)) | .browser_download_url' | head -n 1)
+          KSUN_APK_NORMAL=$(echo "$KSUN_RELEASE" | jq -r '.assets[] | select(.name | contains("release.apk") and (contains("spoofed") | not)) | .browser_download_url' | head -n 1)
+          KSUN_APK_SPOOF=$(echo "$KSUN_RELEASE" | jq -r '.assets[] | select(.name | contains("spoofed") and contains(".apk")) | .browser_download_url' | head -n 1)
+          if [ -z "$KSUN_KO_URL" ] || [ "$KSUN_KO_URL" == "null" ]; then
+            KSUN_KO_URL="https://github.com/KernelSU-Next/KernelSU-Next/releases/download/v3.4.2/aarch64_android17-6.18_kernelsu.ko"
+          fi
+          curl -L -o kernelsu-next.ko "$KSUN_KO_URL"
+
+          # SukiSU
+          SUKI_RELEASE=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/SukiSU-Ultra/SukiSU-Ultra/releases/latest")
+          SUKI_KO_URL=$(echo "$SUKI_RELEASE" | jq -r --arg kmi "$DYNAMIC_KMI" --arg mm "$KERNEL_MAJOR_MINOR" '.assets[] | select(.name | (contains($kmi) or (contains($mm) and (contains("aarch64") or contains("arm64")))) and (contains("kernelsu") and endswith(".ko")) and (contains("x86") | not) and (contains("guard") | not)) | .browser_download_url' | head -n 1)
+          SUKI_APK_URL=$(echo "$SUKI_RELEASE" | jq -r '.assets[] | select(.name | contains("release") and (contains("spoofed") | not) and endswith(".apk")) | .browser_download_url' | head -n 1)
+          if [ -z "$SUKI_APK_URL" ] || [ "$SUKI_APK_URL" == "null" ]; then
+            SUKI_APK_URL=$(echo "$SUKI_RELEASE" | jq -r '.assets[] | select(.name | endswith(".apk")) | .browser_download_url' | head -n 1)
+          fi
+          if [ -z "$SUKI_KO_URL" ] || [ "$SUKI_KO_URL" == "null" ]; then
+            SUKI_KO_URL="https://github.com/SukiSU-Ultra/SukiSU-Ultra/releases/download/v4.3.0/lkm-aarch64-android17-6.18_kernelsu.ko"
+          fi
+          curl -L -o sukisu-ultra.ko "$SUKI_KO_URL"
+
+          # 4. Patch init_boot.img with ksud for Beta
+          # KSU
+          ../ksud boot-patch -b "$(pwd)/init_boot.img" -m "$(pwd)/kernelsu-official.ko" --kmi "$DYNAMIC_KMI" -o "$(pwd)" --out-name KernelSU-Beta-init_boot.img
+          GENERATED_FILE=$(find . -maxdepth 1 -name "*patched_*.img" | head -n 1)
+          if [ -n "$GENERATED_FILE" ] && [ ! -f KernelSU-Beta-init_boot.img ]; then mv "$GENERATED_FILE" KernelSU-Beta-init_boot.img; fi
+          rm -f *patched_*.img
+
+          # KSUN Normal
+          ../ksud boot-patch -b "$(pwd)/init_boot.img" -m "$(pwd)/kernelsu-next.ko" --kmi "$DYNAMIC_KMI" -o "$(pwd)" --out-name KernelSU-Next-Normal-Beta-init_boot.img
+          GENERATED_FILE=$(find . -maxdepth 1 -name "*patched_*.img" | head -n 1)
+          if [ -n "$GENERATED_FILE" ] && [ ! -f KernelSU-Next-Normal-Beta-init_boot.img ]; then mv "$GENERATED_FILE" KernelSU-Next-Normal-Beta-init_boot.img; fi
+          rm -f *patched_*.img
+
+          # KSUN Spoof
+          ../ksud boot-patch -b "$(pwd)/init_boot.img" -m "$(pwd)/kernelsu-next.ko" --kmi "$DYNAMIC_KMI" -o "$(pwd)" --out-name KernelSU-Next-Spoof-Beta-init_boot.img
+          GENERATED_FILE=$(find . -maxdepth 1 -name "*patched_*.img" | head -n 1)
+          if [ -n "$GENERATED_FILE" ] && [ ! -f KernelSU-Next-Spoof-Beta-init_boot.img ]; then mv "$GENERATED_FILE" KernelSU-Next-Spoof-Beta-init_boot.img; fi
+          rm -f *patched_*.img
+
+          # SukiSU
+          ../ksud boot-patch -b "$(pwd)/init_boot.img" -m "$(pwd)/sukisu-ultra.ko" --kmi "$DYNAMIC_KMI" -o "$(pwd)" --out-name SukiSU-Ultra-Beta-init_boot.img
+          GENERATED_FILE=$(find . -maxdepth 1 -name "*patched_*.img" | head -n 1)
+          if [ -n "$GENERATED_FILE" ] && [ ! -f SukiSU-Ultra-Beta-init_boot.img ]; then mv "$GENERATED_FILE" SukiSU-Ultra-Beta-init_boot.img; fi
+          rm -f *patched_*.img
+
+          # 5. Build Descriptions for Beta
+          cp ../base_body_beta.txt desc_stock_beta.txt
+          echo -e "\n\n---\n### 🧪 Nothing OS Open Beta Notice:\nThis is a beta pre-release firmware image. If your device is rooted, do not install updates directly without restoring stock images. For step-by-step flashing instructions, refer to the [Official Guide](https://github.com/${{ github.repository }}/blob/main/GUIDE.md)." >> desc_stock_beta.txt
+
+          echo -e "### ℹ️ Build Information:\n- **Channel:** 🧪 Open Beta\n- **Nothing OS Build Version Patched:** \`${{ env.NEW_NOTHING_BETA }}\`\n\n### 📖 Flashing Guide (LKM GKI2 Mode - Both Slots):\n- Connect your phone in **Fastboot Mode** (Power + Volume Down).\n- Flash this patched \`init_boot\` image explicitly to **both slot A and slot B**:\n  \`\`\`bash\n  fastboot flash init_boot_a KernelSU-Beta-init_boot.img\n  fastboot flash init_boot_b KernelSU-Beta-init_boot.img\n  fastboot reboot\n  \`\`\`\n- **File to Flash:** \`KernelSU-Beta-init_boot.img\`\n- **Backup File:** \`stock-beta-init_boot.img\`\n- For complete step-by-step flashing instructions, refer to the [Official Guide](https://github.com/${{ github.repository }}/blob/main/GUIDE.md).\n\n### 📥 Direct Download Link:\n- [KernelSU (${{ env.NEW_KSU }}) APK]($KSU_APK_URL)" > desc_ksu_beta.txt
+
+          echo -e "### ℹ️ Build Information:\n- **Channel:** 🧪 Open Beta\n- **Nothing OS Build Version Patched:** \`${{ env.NEW_NOTHING_BETA }}\`\n\n### 📖 Flashing Guide (LKM GKI2 Mode - Both Slots):\n- Connect your phone in **Fastboot Mode** (Power + Volume Down).\n- Flash this patched \`init_boot\` image explicitly to **both slot A and slot B**:\n  \`\`\`bash\n  fastboot flash init_boot_a KernelSU-Next-Normal-Beta-init_boot.img\n  fastboot flash init_boot_b KernelSU-Next-Normal-Beta-init_boot.img\n  fastboot reboot\n  \`\`\`\n- **File to Flash:** \`KernelSU-Next-Normal-Beta-init_boot.img\`\n- **Backup File:** \`stock-beta-init_boot.img\`\n- For complete step-by-step flashing instructions, refer to the [Official Guide](https://github.com/${{ github.repository }}/blob/main/GUIDE.md).\n\n### 📥 Direct Download Link:\n- [KernelSU-Next (${{ env.NEW_KSUN }}) Normal APK]($KSUN_APK_NORMAL)" > desc_ksun_normal_beta.txt
+
+          echo -e "### ℹ️ Build Information:\n- **Channel:** 🧪 Open Beta\n- **Nothing OS Build Version Patched:** \`${{ env.NEW_NOTHING_BETA }}\`\n\n### 📖 Flashing Guide (LKM GKI2 Mode - Both Slots):\n- Connect your phone in **Fastboot Mode** (Power + Volume Down).\n- Flash this patched \`init_boot\` image explicitly to **both slot A and slot B**:\n  \`\`\`bash\n  fastboot flash init_boot_a KernelSU-Next-Spoof-Beta-init_boot.img\n  fastboot flash init_boot_b KernelSU-Next-Spoof-Beta-init_boot.img\n  fastboot reboot\n  \`\`\`\n- **File to Flash:** \`KernelSU-Next-Spoof-Beta-init_boot.img\`\n- **Backup File:** \`stock-beta-init_boot.img\`\n- For complete step-by-step flashing instructions, refer to the [Official Guide](https://github.com/${{ github.repository }}/blob/main/GUIDE.md).\n\n### 📥 Direct Download Link:\n- [KernelSU-Next (${{ env.NEW_KSUN }}) Spoofed APK (SUSFS/Spoof)]($KSUN_APK_SPOOF)" > desc_ksun_spoof_beta.txt
+
+          echo -e "### ℹ️ Build Information:\n- **Channel:** 🧪 Open Beta\n- **Nothing OS Build Version Patched:** \`${{ env.NEW_NOTHING_BETA }}\`\n\n### 📖 Flashing Guide (LKM GKI2 Mode - Both Slots):\n- Connect your phone in **Fastboot Mode** (Power + Volume Down).\n- Flash this patched \`init_boot\` image explicitly to **both slot A and slot B**:\n  \`\`\`bash\n  fastboot flash init_boot_a SukiSU-Ultra-Beta-init_boot.img\n  fastboot flash init_boot_b SukiSU-Ultra-Beta-init_boot.img\n  fastboot reboot\n  \`\`\`\n- **File to Flash:** \`SukiSU-Ultra-Beta-init_boot.img\`\n- **Backup File:** \`stock-beta-init_boot.img\`\n- For complete step-by-step flashing instructions, refer to the [Official Guide](https://github.com/${{ github.repository }}/blob/main/GUIDE.md).\n\n### 📥 Direct Download Link:\n- [SukiSU-Ultra (${{ env.NEW_SUKI }}) APK]($SUKI_APK_URL)" > desc_suki_beta.txt
+
       # ----------------------------------------------------
-      # Releases uploads conditionally with clean tag names
+      # STABLE RELEASES
       # ----------------------------------------------------
-      - name: Create Stock Update Release
-        if: env.BUILD_STOCK == 'true'
+      - name: Create Stock Stable Release
+        if: env.BUILD_STABLE_STOCK == 'true'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ env.NEW_NOTHING }}
-          name: ${{ env.NEW_NOTHING }}
-          body_path: desc_stock.txt
-          files: stock_assets/*
+          tag_name: ${{ env.NEW_NOTHING_STABLE }}
+          name: Nothing OS (2a) - ${{ env.NEW_NOTHING_STABLE }}
+          body_path: build_stable/desc_stock.txt
+          files: build_stable/stock_assets/*
+          prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Create KernelSU Release
-        if: env.BUILD_KSU == 'true'
+      - name: Create KernelSU Stable Release
+        if: env.BUILD_STABLE_PATCH == 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: KernelSU-${{ env.NEW_KSU }}
-          name: KernelSU (${{ env.NEW_KSU }})
-          body_path: desc_ksu.txt
+          name: KernelSU (${{ env.NEW_KSU }}) [Stable]
+          body_path: build_stable/desc_ksu.txt
           files: |
-            KernelSU-init_boot.img
-            stock-init_boot.img
+            build_stable/KernelSU-init_boot.img
+            build_stable/stock-init_boot.img
+          prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Create KernelSU-Next Normal Release
-        if: env.BUILD_KSUN == 'true'
+      - name: Create KernelSU-Next Normal Stable Release
+        if: env.BUILD_STABLE_PATCH == 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: KernelSU-Next-Normal-${{ env.NEW_KSUN }}
-          name: KernelSU-Next Normal (${{ env.NEW_KSUN }})
-          body_path: desc_ksun_normal.txt
+          name: KernelSU-Next Normal (${{ env.NEW_KSUN }}) [Stable]
+          body_path: build_stable/desc_ksun_normal.txt
           files: |
-            KernelSU-Next-Normal-init_boot.img
-            stock-init_boot.img
+            build_stable/KernelSU-Next-Normal-init_boot.img
+            build_stable/stock-init_boot.img
+          prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Create KernelSU-Next Spoof Release
-        if: env.BUILD_KSUN == 'true'
+      - name: Create KernelSU-Next Spoof Stable Release
+        if: env.BUILD_STABLE_PATCH == 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: KernelSU-Next-Spoof-${{ env.NEW_KSUN }}
-          name: KernelSU-Next Spoof (${{ env.NEW_KSUN }})
-          body_path: desc_ksun_spoof.txt
+          name: KernelSU-Next Spoof (${{ env.NEW_KSUN }}) [Stable]
+          body_path: build_stable/desc_ksun_spoof.txt
           files: |
-            KernelSU-Next-Spoof-init_boot.img
-            stock-init_boot.img
+            build_stable/KernelSU-Next-Spoof-init_boot.img
+            build_stable/stock-init_boot.img
+          prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Create SukiSU-Ultra Release
-        if: env.BUILD_SUKI == 'true'
+      - name: Create SukiSU-Ultra Stable Release
+        if: env.BUILD_STABLE_PATCH == 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: SukiSU-Ultra-${{ env.NEW_SUKI }}
-          name: SukiSU-Ultra (${{ env.NEW_SUKI }})
-          body_path: desc_suki.txt
+          name: SukiSU-Ultra (${{ env.NEW_SUKI }}) [Stable]
+          body_path: build_stable/desc_suki.txt
           files: |
-            SukiSU-Ultra-init_boot.img
-            stock-init_boot.img
+            build_stable/SukiSU-Ultra-init_boot.img
+            build_stable/stock-init_boot.img
+          prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # ----------------------------------------------------
+      # OPEN BETA RELEASES
+      # ----------------------------------------------------
+      - name: Create Stock Open Beta Release
+        if: env.BUILD_BETA_STOCK == 'true' && env.NEW_NOTHING_BETA != ''
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.NEW_NOTHING_BETA }}
+          name: Nothing OS (2a) Open Beta - ${{ env.NEW_NOTHING_BETA }}
+          body_path: build_beta/desc_stock_beta.txt
+          files: build_beta/stock_beta_assets/*
+          prerelease: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create KernelSU Beta Release
+        if: env.BUILD_BETA_PATCH == 'true' && env.NEW_NOTHING_BETA != ''
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: KernelSU-Beta-${{ env.NEW_KSU }}
+          name: KernelSU (${{ env.NEW_KSU }}) [Open Beta]
+          body_path: build_beta/desc_ksu_beta.txt
+          files: |
+            build_beta/KernelSU-Beta-init_boot.img
+            build_beta/stock-beta-init_boot.img
+          prerelease: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create KernelSU-Next Normal Beta Release
+        if: env.BUILD_BETA_PATCH == 'true' && env.NEW_NOTHING_BETA != ''
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: KernelSU-Next-Normal-Beta-${{ env.NEW_KSUN }}
+          name: KernelSU-Next Normal (${{ env.NEW_KSUN }}) [Open Beta]
+          body_path: build_beta/desc_ksun_normal_beta.txt
+          files: |
+            build_beta/KernelSU-Next-Normal-Beta-init_boot.img
+            build_beta/stock-beta-init_boot.img
+          prerelease: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create KernelSU-Next Spoof Beta Release
+        if: env.BUILD_BETA_PATCH == 'true' && env.NEW_NOTHING_BETA != ''
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: KernelSU-Next-Spoof-Beta-${{ env.NEW_KSUN }}
+          name: KernelSU-Next Spoof (${{ env.NEW_KSUN }}) [Open Beta]
+          body_path: build_beta/desc_ksun_spoof_beta.txt
+          files: |
+            build_beta/KernelSU-Next-Spoof-Beta-init_boot.img
+            build_beta/stock-beta-init_boot.img
+          prerelease: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create SukiSU-Ultra Beta Release
+        if: env.BUILD_BETA_PATCH == 'true' && env.NEW_NOTHING_BETA != ''
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: SukiSU-Ultra-Beta-${{ env.NEW_SUKI }}
+          name: SukiSU-Ultra (${{ env.NEW_SUKI }}) [Open Beta]
+          body_path: build_beta/desc_suki_beta.txt
+          files: |
+            build_beta/SukiSU-Ultra-Beta-init_boot.img
+            build_beta/stock-beta-init_boot.img
+          prerelease: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # ----------------------------------------------------
+      # DYNAMIC README & VERSIONS.JSON UPDATE
+      # ----------------------------------------------------
       - name: Generate Dynamic README.md
         if: env.ANY_BUILD == 'true'
         run: |
-          # Get current date in IST timezone (Asia/Kolkata)
           CURR_DATE=$(TZ="Asia/Kolkata" date +"%d %b %Y, %I:%M %p %Z")
           
-          # Construct precise release URLs using newest tags
-          URL_STOCK="https://github.com/${{ github.repository }}/releases/tag/${{ env.NEW_NOTHING }}"
-          URL_KSU="https://github.com/${{ github.repository }}/releases/tag/KernelSU-${{ env.NEW_KSU }}"
-          URL_KSUN_NORMAL="https://github.com/${{ github.repository }}/releases/tag/KernelSU-Next-Normal-${{ env.NEW_KSUN }}"
-          URL_KSUN_SPOOF="https://github.com/${{ github.repository }}/releases/tag/KernelSU-Next-Spoof-${{ env.NEW_KSUN }}"
-          URL_SUKI="https://github.com/${{ github.repository }}/releases/tag/SukiSU-Ultra-${{ env.NEW_SUKI }}"
+          # Stable Links
+          URL_STOCK_STABLE="https://github.com/${{ github.repository }}/releases/tag/${{ env.NEW_NOTHING_STABLE }}"
+          URL_KSU_STABLE="https://github.com/${{ github.repository }}/releases/tag/KernelSU-${{ env.NEW_KSU }}"
+          URL_KSUN_NORMAL_STABLE="https://github.com/${{ github.repository }}/releases/tag/KernelSU-Next-Normal-${{ env.NEW_KSUN }}"
+          URL_KSUN_SPOOF_STABLE="https://github.com/${{ github.repository }}/releases/tag/KernelSU-Next-Spoof-${{ env.NEW_KSUN }}"
+          URL_SUKI_STABLE="https://github.com/${{ github.repository }}/releases/tag/SukiSU-Ultra-${{ env.NEW_SUKI }}"
           
-          # Generate clean README markdown
+          # Beta Links
+          URL_STOCK_BETA="https://github.com/${{ github.repository }}/releases/tag/${{ env.NEW_NOTHING_BETA }}"
+          URL_KSU_BETA="https://github.com/${{ github.repository }}/releases/tag/KernelSU-Beta-${{ env.NEW_KSU }}"
+          URL_KSUN_NORMAL_BETA="https://github.com/${{ github.repository }}/releases/tag/KernelSU-Next-Normal-Beta-${{ env.NEW_KSUN }}"
+          URL_KSUN_SPOOF_BETA="https://github.com/${{ github.repository }}/releases/tag/KernelSU-Next-Spoof-Beta-${{ env.NEW_KSUN }}"
+          URL_SUKI_BETA="https://github.com/${{ github.repository }}/releases/tag/SukiSU-Ultra-Beta-${{ env.NEW_SUKI }}"
+
           cat << EOF > README.md
           # Nothing Phone (2a) - Autopilot Root Patcher Hub 🛡️
 
-          Welcome to your personal automatic rooting hub! This repository automatically tracks, downloads, patches, and publishes stock and rooted partition images for **Nothing Phone (2a) (Pacman)** on every new update.
+          Welcome to your personal automatic rooting hub! This repository automatically tracks, downloads, patches, and publishes stock and rooted partition images for **Nothing Phone (2a) (Pacman)** across both **Stable** and **Open Beta** channels.
 
           ---
 
@@ -360,21 +546,31 @@ jobs:
 
           ---
 
-          ## 📥 Quick Download Navigation (Latest Releases)
-          Select the appropriate download for your phone by clicking the links below:
+          ## 🟢 Stable Channel (Nothing OS Stable)
+          *Current Tracked Version:* \`${{ env.NEW_NOTHING_STABLE }}\`
 
           ### 📱 Stock Update (No Root)
-          If you want to update your phone with official/original stock images (firmware, logical, boot, etc.) without root, click here:
-          *   👉 **[Go to Latest Stock Update Release]($URL_STOCK)**
+          *   👉 **[Go to Latest Stock Stable Release]($URL_STOCK_STABLE)**
+
+          ### 🧬 Patched Init_Boot Images (Stable)
+          *   👉 **[KernelSU (${{ env.NEW_KSU }}) APK]($URL_KSU_STABLE)**
+          *   👉 **[KernelSU-Next (${{ env.NEW_KSUN }}) Normal APK]($URL_KSUN_NORMAL_STABLE)**
+          *   👉 **[KernelSU-Next (${{ env.NEW_KSUN }}) Spoofed APK (SUSFS/Spoof)]($URL_KSUN_SPOOF_STABLE)**
+          *   👉 **[SukiSU-Ultra (${{ env.NEW_SUKI }}) APK]($URL_SUKI_STABLE)**
 
           ---
 
-          ### 🧬 Patched Init_Boot Images (KernelSU, KernelSU-Next, SukiSU-Ultra)
-          Click below to download patched init_boot images for KernelSU and compatible modules (LKM GKI2 mode):
-          *   👉 **[KernelSU (${{ env.NEW_KSU }}) APK]($URL_KSU)**
-          *   👉 **[KernelSU-Next (${{ env.NEW_KSUN }}) Normal APK]($URL_KSUN_NORMAL)**
-          *   👉 **[KernelSU-Next (${{ env.NEW_KSUN }}) Spoofed APK (SUSFS/Spoof)]($URL_KSUN_SPOOF)**
-          *   👉 **[SukiSU-Ultra (${{ env.NEW_SUKI }}) APK]($URL_SUKI)**
+          ## 🧪 Open Beta Channel (Nothing OS Open Beta)
+          *Current Tracked Version:* \`${{ env.NEW_NOTHING_BETA }}\`
+
+          ### 📱 Stock Open Beta Update (No Root)
+          *   👉 **[Go to Latest Stock Open Beta Release]($URL_STOCK_BETA)**
+
+          ### 🧬 Patched Init_Boot Images (Beta)
+          *   👉 **[KernelSU Beta (${{ env.NEW_KSU }}) APK]($URL_KSU_BETA)**
+          *   👉 **[KernelSU-Next (${{ env.NEW_KSUN }}) Normal Beta APK]($URL_KSUN_NORMAL_BETA)**
+          *   👉 **[KernelSU-Next (${{ env.NEW_KSUN }}) Spoofed Beta APK (SUSFS/Spoof)]($URL_KSUN_SPOOF_BETA)**
+          *   👉 **[SukiSU-Ultra Beta (${{ env.NEW_SUKI }}) APK]($URL_SUKI_BETA)**
 
           ---
           *Auto-updated by GitHub Actions. Last check: $CURR_DATE*
@@ -390,7 +586,7 @@ jobs:
           git checkout ${{ github.ref_name }}
           
           # Write new versions back to versions.json
-          echo "{\"nothing_tag\":\"${{ env.NEW_NOTHING }}\",\"ksu_version\":\"${{ env.NEW_KSU }}\",\"ksun_version\":\"${{ env.NEW_KSUN }}\",\"sukisu_version\":\"${{ env.NEW_SUKI }}\"}" > versions.json
+          echo "{\"nothing_stable_tag\":\"${{ env.NEW_NOTHING_STABLE }}\",\"nothing_beta_tag\":\"${{ env.NEW_NOTHING_BETA }}\",\"nothing_tag\":\"${{ env.NEW_NOTHING_STABLE }}\",\"ksu_version\":\"${{ env.NEW_KSU }}\",\"ksun_version\":\"${{ env.NEW_KSUN }}\",\"sukisu_version\":\"${{ env.NEW_SUKI }}\"}" > versions.json
           
           # Stage files before pulling/rebasing to avoid unstaged conflict
           git add versions.json README.md

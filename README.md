@@ -20,7 +20,7 @@ Learn how to root your device via fastboot and how to safely install official sy
 *   👉 **[KernelSU (v3.3.1) APK](https://github.com/m4mental/Nothing-phone-2a/releases/tag/KernelSU-v3.3.1)**
 *   👉 **[KernelSU-Next (v3.4.2) Normal APK](https://github.com/m4mental/Nothing-phone-2a/releases/tag/KernelSU-Next-Normal-v3.4.2)**
 *   👉 **[KernelSU-Next (v3.4.2) Spoofed APK (SUSFS/Spoof)](https://github.com/m4mental/Nothing-phone-2a/releases/tag/KernelSU-Next-Spoof-v3.4.2)**
-*   👉 **[SukiSU-Ultra (v4.3.0-r1) APK](https://github.com/m4mental/Nothing-phone-2a/releases/tag/SukiSU-Ultra-v4.3.0-r1)**
+*   👉 **[SukiSU-Ultra (v4.3.0-r2) APK](https://github.com/m4mental/Nothing-phone-2a/releases/tag/SukiSU-Ultra-v4.3.0-r2)**
 
 ---
 
@@ -34,7 +34,7 @@ Learn how to root your device via fastboot and how to safely install official sy
 *   👉 **[KernelSU Beta (v3.3.1) APK](https://github.com/m4mental/Nothing-phone-2a/releases/tag/KernelSU-Beta-v3.3.1)**
 *   👉 **[KernelSU-Next (v3.4.2) Normal Beta APK](https://github.com/m4mental/Nothing-phone-2a/releases/tag/KernelSU-Next-Normal-Beta-v3.4.2)**
 *   👉 **[KernelSU-Next (v3.4.2) Spoofed Beta APK (SUSFS/Spoof)](https://github.com/m4mental/Nothing-phone-2a/releases/tag/KernelSU-Next-Spoof-Beta-v3.4.2)**
-*   👉 **[SukiSU-Ultra Beta (v4.3.0-r1) APK](https://github.com/m4mental/Nothing-phone-2a/releases/tag/SukiSU-Ultra-Beta-v4.3.0-r1)**
+*   👉 **[SukiSU-Ultra Beta (v4.3.0-r2) APK](https://github.com/m4mental/Nothing-phone-2a/releases/tag/SukiSU-Ultra-Beta-v4.3.0-r2)**
 
 ---
-*Auto-updated by GitHub Actions. Last check: 05 Nov 2026, 05:26 AM IST*
+*Auto-updated by GitHub Actions. Last check: 06 Nov 2026, 12:40 AM IST*

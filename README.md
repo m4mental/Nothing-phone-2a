@@ -11,10 +11,10 @@ Learn how to root your device via fastboot and how to safely install official sy
 ---
 
 ## 🟢 Stable Channel (Nothing OS Stable)
-*Current Tracked Version:* `Pacman_B4.1-260928-1157`
+*Current Tracked Version:* `Pacman_C5.0-261112-1938`
 
 ### 📱 Stock Update (No Root)
-*   👉 **[Go to Latest Stock Stable Release](https://github.com/m4mental/Nothing-phone-2a/releases/tag/Pacman_B4.1-260928-1157)**
+*   👉 **[Go to Latest Stock Stable Release](https://github.com/m4mental/Nothing-phone-2a/releases/tag/Pacman_C5.0-261112-1938)**
 
 ### 🧬 Patched Init_Boot Images (Stable)
 *   👉 **[KernelSU (v3.3.1) APK](https://github.com/m4mental/Nothing-phone-2a/releases/tag/KernelSU-v3.3.1)**
@@ -37,4 +37,4 @@ Learn how to root your device via fastboot and how to safely install official sy
 *   👉 **[SukiSU-Ultra Beta (null) APK](https://github.com/m4mental/Nothing-phone-2a/releases/tag/SukiSU-Ultra-Beta-null)**
 
 ---
-*Auto-updated by GitHub Actions. Last check: 15 Nov 2026, 11:36 PM IST*
+*Auto-updated by GitHub Actions. Last check: 20 Nov 2026, 01:15 AM IST*
